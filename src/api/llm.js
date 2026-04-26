@@ -2,8 +2,8 @@ const ANTHROPIC_KEY = 'sk-ant-api03-aGFyZ3mpQBFL1tnkUPCT3NEbMZGU-Dbx99scyaLo5WHE
 const GEMINI_KEY = 'AIzaSyB6vchHuJBAZ6yF7-ONnYgGZCLMPwjDBfA'; // User should fill this or we can use an env var
 
 export const MODELS = [
-  { id: "claude-3-5-sonnet-latest", name: "Claude 3.5 Sonnet", provider: "anthropic", thinking: true },
-  { id: "claude-3-5-haiku-latest", name: "Claude 3.5 Haiku", provider: "anthropic", thinking: false },
+  { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic", thinking: true },
+  { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5", provider: "anthropic", thinking: false },
   { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro", provider: "google", thinking: true },
   { id: "gemini-3.0-flash-preview", name: "Gemini 3.0 Flash", provider: "google", thinking: false },
 ];
@@ -42,7 +42,10 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
 
   if (resp.status === 429 && retries > 0) {
     const retryAfter = parseInt(resp.headers.get("retry-after") || "20", 10);
-    await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(resolve, retryAfter * 1000);
+      signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
+    });
     return callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries - 1);
   }
 
@@ -54,8 +57,10 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
   }
 
   const data = await resp.json();
+  if (data.stop_reason === "max_tokens") throw new Error("Response truncated (max_tokens hit) — try again");
   const textBlock = (data.content || []).find(c => c.type === "text");
-  return textBlock?.text || "";
+  if (!textBlock?.text?.trim()) throw new Error("Empty API response");
+  return textBlock.text;
 }
 
 async function callGemini({ modelId, system, userMessage, maxTokens, signal }, retries) {
@@ -83,7 +88,10 @@ async function callGemini({ modelId, system, userMessage, maxTokens, signal }, r
   });
 
   if (resp.status === 429 && retries > 0) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(resolve, 5000);
+      signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
+    });
     return callGemini({ modelId, system, userMessage, maxTokens, signal }, retries - 1);
   }
 
@@ -95,8 +103,10 @@ async function callGemini({ modelId, system, userMessage, maxTokens, signal }, r
   }
 
   const data = await resp.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Empty response from Gemini");
+  const candidate = data.candidates?.[0];
+  if (candidate?.finishReason === "MAX_TOKENS") throw new Error("Response truncated (max_tokens hit) — try again");
+  const text = candidate?.content?.parts?.[0]?.text;
+  if (!text?.trim()) throw new Error("Empty response from Gemini");
   return text;
 }
 

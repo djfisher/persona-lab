@@ -1,5 +1,13 @@
 import { useState } from "react";
 
+export const RATING_DIMS = [
+  { key: "overall", label: "Overall", icon: "◆" },
+  { key: "value", label: "Value", icon: "$" },
+  { key: "usability", label: "Usability", icon: "◎" },
+  { key: "reliability", label: "Reliability", icon: "⚙" },
+  { key: "wouldRecommend", label: "Recommend", icon: "➤" },
+];
+
 export const Card = ({ children, style = {} }) => (
   <div style={{ background: "var(--s1)", borderRadius: 12, border: "1px solid var(--bdr)", padding: 20, ...style }}>
     {children}
@@ -115,16 +123,3 @@ export const ErrorBanner = ({ error, onDismiss, onRetry }) => {
   );
 };
 
-export const BuyFormula = ({ params, prob }) => {
-  if (!params) return null;
-  const calculated = Math.round((params.val + params.usa) / (params.pri * params.ske) * 25);
-  return (
-    <div style={{ marginTop: 10, padding: 10, background: "var(--s0)", borderRadius: 8, border: "1px dashed var(--bdr)", fontFamily: "var(--mono)", fontSize: 11 }}>
-      <div style={{ color: "var(--t2)", marginBottom: 4, textTransform: "uppercase", fontSize: 9, letterSpacing: 1 }}>Buy Probability Audit</div>
-      <div style={{ color: "var(--t1)" }}>
-        round((<span style={{ color: "#2EC4B6" }}>val:{params.val}</span> + <span style={{ color: "#3185FC" }}>usa:{params.usa}</span>) / (<span style={{ color: "#F9A03F" }}>price:{params.pri}</span> × <span style={{ color: "#E84855" }}>skep:{params.ske}</span>) × 25) = <span style={{ color: "#E84855", fontWeight: 700 }}>{calculated}%</span>
-        {Math.abs(calculated - parseInt(prob)) > 5 && <span style={{ color: "var(--t2)", marginLeft: 8 }}>(persona reported {prob}%)</span>}
-      </div>
-    </div>
-  );
-};

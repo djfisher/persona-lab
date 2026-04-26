@@ -5,17 +5,7 @@ import { buildSystemPrompt, JTBD_PROMPT, REWRITE_PROMPT, STEELMAN_PROMPT, PERSON
 import { MethodologyPanel, FeedbackPanel, SteelManPanel, JTBDPanel, RewritePanel, PersonaEditor } from "./components/panels/index.jsx";
 
 import { callAPI, extractJSON, MODELS } from "./api/llm.js";
-import { Card, SH, TabBtn, ErrorBanner } from "./components/Common.jsx";
-
-
-
-const RATING_DIMS = [
-  { key: "overall", label: "Overall", icon: "◆" },
-  { key: "value", label: "Value", icon: "$" },
-  { key: "usability", label: "Usability", icon: "◎" },
-  { key: "reliability", label: "Reliability", icon: "⚙" },
-  { key: "wouldRecommend", label: "Recommend", icon: "➤" },
-];
+import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
 
 const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 5: "Ruthless" };
 
