@@ -632,6 +632,7 @@ export default function App() {
   const [synthesis, setSynthesis] = useState(null);
   const [steelMan, setSteelMan] = useState(null);
   const [rewrite, setRewrite] = useState(null);
+  const [rewriteGuidance, setRewriteGuidance] = useState("");
   const [synthesizing, setSynthesizing] = useState(false);
   const [steelManning, setSteelManning] = useState(false);
   const [rewriting, setRewriting] = useState(false);
@@ -713,7 +714,7 @@ export default function App() {
   };
 
   // ─── Product Rewrite ───
-  const runRewrite = async (personaResults, synthesisData, signal) => {
+  const runRewrite = async (personaResults, synthesisData, signal, guidance = "") => {
     setRewriting(true);
     try {
       const personaSummary = Object.entries(personaResults).map(([pid, r]) => {
@@ -721,7 +722,8 @@ export default function App() {
         return p ? `PERSONA: ${p.name} (${p.role})\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}\nBuy%: ${r.buyProbability}%` : "";
       }).filter(Boolean).join("\n\n---\n\n");
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
-      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, maxTokens: 3000, signal });
+      const guidanceSection = guidance.trim() ? `\n\nADDITIONAL DIRECTION: ${guidance.trim()}` : "";
+      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}${guidanceSection}\n\nRewrite the product offering based on all of this.`, maxTokens: 3000, signal });
       setRewrite(extractJSON(text)); setActiveTab("rewrite");
     } catch (err) {
       if (err.name === "AbortError") throw err;
@@ -927,7 +929,44 @@ export default function App() {
             {activeTab === "steelman" && (steelMan ? <SteelManPanel steelMan={steelMan} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>💀</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No pre-mortem yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Click 'Tell Me Why I'm Wrong'"}</div>{rc >= 2 && !steelManning && <button onClick={() => runSteelMan(results)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#E84855", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💀 Tell Me Why I'm Wrong</button>}</Card>)}
 
             {/* Rewrite Tab */}
-            {activeTab === "rewrite" && (rewrite ? <RewritePanel rewrite={rewrite} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>✨</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No rewrite yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Runs automatically after JTBD synthesis"}</div>{rc >= 2 && synthesis && !rewriting && <button onClick={() => runRewrite(results, synthesis)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✨ Rewrite Product Offering</button>}</Card>)}
+            {activeTab === "rewrite" && (
+              <>
+                {rewrite ? <RewritePanel rewrite={rewrite} /> : (
+                  <Card style={{ textAlign: "center", padding: 40 }}>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>✨</div>
+                    <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No rewrite yet</div>
+                    <div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Runs automatically after JTBD synthesis"}</div>
+                    {rc >= 2 && synthesis && !rewriting && (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                        <textarea
+                          value={rewriteGuidance}
+                          onChange={e => setRewriteGuidance(e.target.value)}
+                          placeholder="Optional direction — e.g. 'Focus on the clinical oversight angle', 'Emphasize no waiting rooms', 'Target the 38–45 demographic'"
+                          rows={3}
+                          style={{ width: "100%", maxWidth: 480, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical", outline: "none" }}
+                        />
+                        <button onClick={() => runRewrite(results, synthesis, undefined, rewriteGuidance)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✨ Rewrite Product Offering</button>
+                      </div>
+                    )}
+                  </Card>
+                )}
+                {rewrite && !rewriting && rc >= 2 && synthesis && (
+                  <Card style={{ marginTop: 16, padding: 20 }}>
+                    <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, color: "var(--t1)", marginBottom: 10 }}>↻ Re-run Rewrite</div>
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <textarea
+                        value={rewriteGuidance}
+                        onChange={e => setRewriteGuidance(e.target.value)}
+                        placeholder="Optional direction — e.g. 'Focus on the clinical oversight angle', 'Emphasize no waiting rooms', 'Target the 38–45 demographic'"
+                        rows={2}
+                        style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical", outline: "none" }}
+                      />
+                      <button onClick={() => runRewrite(results, synthesis, undefined, rewriteGuidance)} style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}>↻ Re-run</button>
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
           </>
         )}
       </div>
