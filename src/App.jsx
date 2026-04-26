@@ -121,7 +121,7 @@ Respond ONLY with valid JSON:
 }`;
 
 // ─── API & UTILS ───
-async function callAPI({ system, userMessage, maxTokens = 4096, signal }) {
+async function callAPI({ system, userMessage, maxTokens = 4096, signal }, retries = 3) {
   const API_KEY = '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';
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -134,15 +134,22 @@ async function callAPI({ system, userMessage, maxTokens = 4096, signal }) {
       "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify({
-      // UPGRADED for 2026: Use Sonnet 4.6 for speed and 1M context support
-      model: "claude-sonnet-4-6", 
-      max_tokens: 4096,
+      model: "claude-sonnet-4-6",
+      max_tokens: maxTokens,
       system: system,
       messages: [{ role: "user", content: userMessage }],
-      // Optional: Enables the new 2026 'Adaptive Thinking' for deeper persona logic
-      thinking: { type: "adaptive" } 
+      thinking: { type: "adaptive" }
     }),
   });
+
+  if (resp.status === 429 && retries > 0) {
+    const retryAfter = parseInt(resp.headers.get("retry-after") || "20", 10);
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(resolve, retryAfter * 1000);
+      signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
+    });
+    return callAPI({ system, userMessage, maxTokens, signal }, retries - 1);
+  }
 
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
@@ -151,7 +158,6 @@ async function callAPI({ system, userMessage, maxTokens = 4096, signal }) {
   }
   const data = await resp.json();
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-  // Handle both standard and extended-thinking responses
   const textBlock = (data.content || []).find(c => c.type === "text");
   if (!textBlock?.text?.trim()) throw new Error("Empty API response");
   return textBlock.text;
@@ -678,7 +684,7 @@ export default function App() {
         const p = personas.find(pp => pp.id === pid);
         return p ? `${p.name}: ${r.headline}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nBuy%: ${r.buyProbability}%\nCompetitor: ${r.competitorMention}` : "";
       }).filter(Boolean).join("\n---\n");
-      const text = await callAPI({ system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, signal });
+      const text = await callAPI({ system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, maxTokens: 1000, signal });
       setSteelMan(extractJSON(text)); setActiveTab("steelman");
     } catch (err) {
       if (err.name === "AbortError") throw err;
@@ -694,7 +700,7 @@ export default function App() {
         const p = personas.find(pp => pp.id === pid);
         return p ? `PERSONA: ${p.name} (${p.role})\nRatings: Overall ${r.ratings.overall}, Value ${r.ratings.value}, Usability ${r.ratings.usability}, Reliability ${r.ratings.reliability}, Recommend ${r.ratings.wouldRecommend}\nBuy%: ${r.buyProbability}%\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nCompetitor: ${r.competitorMention}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}` : "";
       }).filter(Boolean).join("\n\n---\n\n");
-      const text = await callAPI({ system: JTBD_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}\n\nAnalyze using JTBD with Four Forces and friction mapping.`, signal });
+      const text = await callAPI({ system: JTBD_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}\n\nAnalyze using JTBD with Four Forces and friction mapping.`, maxTokens: 2000, signal });
       const data = extractJSON(text);
       setSynthesis(data); setActiveTab("jtbd");
       return data;
@@ -713,7 +719,7 @@ export default function App() {
         return p ? `PERSONA: ${p.name} (${p.role})\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}\nBuy%: ${r.buyProbability}%` : "";
       }).filter(Boolean).join("\n\n---\n\n");
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
-      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, signal });
+      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, maxTokens: 1500, signal });
       setRewrite(extractJSON(text)); setActiveTab("rewrite");
     } catch (err) {
       if (err.name === "AbortError") throw err;
