@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { downloadFeedbackPDF } from "./FeedbackPDF";
 import { usePersonas } from "./personas/usePersonas";
 
@@ -121,11 +121,12 @@ Respond ONLY with valid JSON:
 }`;
 
 // ─── API & UTILS ───
-async function callAPI({ system, userMessage, maxTokens = 4096 }) {
-  const API_KEY = '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'; 
+async function callAPI({ system, userMessage, maxTokens = 4096, signal }) {
+  const API_KEY = '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';
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
+    signal,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": API_KEY,
@@ -632,6 +633,17 @@ export default function App() {
   const [downloading, setDownloading] = useState(false);
   const [newPersona, setNewPersona] = useState({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } });
 
+  const abortRef = useRef(null);
+
+  const stopResearch = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading({});
+    setSynthesizing(false);
+    setSteelManning(false);
+    setRewriting(false);
+  };
+
   const comps = competitors.filter(c => c.trim());
   const toggle = id => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
@@ -659,37 +671,41 @@ export default function App() {
   };
 
   // ─── Pre-Mortem ───
-  const runSteelMan = async (personaResults) => {
+  const runSteelMan = async (personaResults, signal) => {
     setSteelManning(true); setGlobalError(null);
     try {
       const summary = Object.entries(personaResults).map(([pid, r]) => {
         const p = personas.find(pp => pp.id === pid);
         return p ? `${p.name}: ${r.headline}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nBuy%: ${r.buyProbability}%\nCompetitor: ${r.competitorMention}` : "";
       }).filter(Boolean).join("\n---\n");
-      const text = await callAPI({ system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}` });
+      const text = await callAPI({ system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, signal });
       setSteelMan(extractJSON(text)); setActiveTab("steelman");
-    } catch (err) { setGlobalError({ title: "Pre-Mortem Failed", message: err.message, detail: err.message, retryable: true }); }
-    finally { setSteelManning(false); }
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      setGlobalError({ title: "Pre-Mortem Failed", message: err.message, detail: err.message, retryable: true });
+    } finally { setSteelManning(false); }
   };
 
   // ─── JTBD Synthesis ───
-  const runSynthesis = async (personaResults) => {
+  const runSynthesis = async (personaResults, signal) => {
     setSynthesizing(true); setGlobalError(null);
     try {
       const summary = Object.entries(personaResults).map(([pid, r]) => {
         const p = personas.find(pp => pp.id === pid);
         return p ? `PERSONA: ${p.name} (${p.role})\nRatings: Overall ${r.ratings.overall}, Value ${r.ratings.value}, Usability ${r.ratings.usability}, Reliability ${r.ratings.reliability}, Recommend ${r.ratings.wouldRecommend}\nBuy%: ${r.buyProbability}%\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nCompetitor: ${r.competitorMention}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}` : "";
       }).filter(Boolean).join("\n\n---\n\n");
-      const text = await callAPI({ system: JTBD_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}\n\nAnalyze using JTBD with Four Forces and friction mapping.` });
+      const text = await callAPI({ system: JTBD_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}\n\nAnalyze using JTBD with Four Forces and friction mapping.`, signal });
       const data = extractJSON(text);
       setSynthesis(data); setActiveTab("jtbd");
       return data;
-    } catch (err) { setGlobalError({ title: "JTBD Synthesis Failed", message: err.message, detail: err.message, retryable: true }); }
-    finally { setSynthesizing(false); }
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      setGlobalError({ title: "JTBD Synthesis Failed", message: err.message, detail: err.message, retryable: true });
+    } finally { setSynthesizing(false); }
   };
 
   // ─── Product Rewrite ───
-  const runRewrite = async (personaResults, synthesisData) => {
+  const runRewrite = async (personaResults, synthesisData, signal) => {
     setRewriting(true);
     try {
       const personaSummary = Object.entries(personaResults).map(([pid, r]) => {
@@ -697,47 +713,62 @@ export default function App() {
         return p ? `PERSONA: ${p.name} (${p.role})\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}\nBuy%: ${r.buyProbability}%` : "";
       }).filter(Boolean).join("\n\n---\n\n");
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
-      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.` });
+      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, signal });
       setRewrite(extractJSON(text)); setActiveTab("rewrite");
-    } catch (err) { setGlobalError({ title: "Product Rewrite Failed", message: err.message, detail: err.message, retryable: true }); }
-    finally { setRewriting(false); }
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      setGlobalError({ title: "Product Rewrite Failed", message: err.message, detail: err.message, retryable: true });
+    } finally { setRewriting(false); }
   };
 
   // ─── Main Research (Parallel) ───
   const runResearch = async () => {
     if (!productName.trim()) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const { signal } = controller;
+
     setGlobalError(null); setSynthesis(null); setSteelMan(null); setRewrite(null); setActiveTab("feedback"); setPersonaErrors({});
     const sel = personas.filter(p => selectedIds.includes(p.id));
     if (!sel.length) return;
     const nl = {}; sel.forEach(p => nl[p.id] = true); setLoading(nl); setResults({});
 
-    // Parallel persona execution
-    const settled = await Promise.allSettled(sel.map(async (persona) => {
-      try {
-        const text = await callAPI({
-          system: buildSystemPrompt(persona, comps, cynicism),
-          userMessage: `Review this product:\n\nProduct: ${productName}\nDescription: ${productDesc || "No description — evaluate from your knowledge."}\n${comps.length ? `Known Competitors: ${comps.join(", ")}` : ""}\n\nGive your honest assessment.`,
-        });
-        const parsed = extractJSON(text);
-        setResults(prev => ({ ...prev, [persona.id]: parsed }));
-        setLoading(prev => ({ ...prev, [persona.id]: false }));
-        return { id: persona.id, result: parsed };
-      } catch (err) {
-        setPersonaErrors(prev => ({ ...prev, [persona.id]: err.message }));
-        setLoading(prev => ({ ...prev, [persona.id]: false }));
-        throw err;
+    try {
+      // Parallel persona execution
+      const settled = await Promise.allSettled(sel.map(async (persona) => {
+        try {
+          const text = await callAPI({
+            system: buildSystemPrompt(persona, comps, cynicism),
+            userMessage: `Review this product:\n\nProduct: ${productName}\nDescription: ${productDesc || "No description — evaluate from your knowledge."}\n${comps.length ? `Known Competitors: ${comps.join(", ")}` : ""}\n\nGive your honest assessment.`,
+            signal,
+          });
+          const parsed = extractJSON(text);
+          setResults(prev => ({ ...prev, [persona.id]: parsed }));
+          setLoading(prev => ({ ...prev, [persona.id]: false }));
+          return { id: persona.id, result: parsed };
+        } catch (err) {
+          setLoading(prev => ({ ...prev, [persona.id]: false }));
+          if (err.name !== "AbortError") setPersonaErrors(prev => ({ ...prev, [persona.id]: err.message }));
+          throw err;
+        }
+      }));
+
+      if (signal.aborted) return;
+
+      const allResults = {};
+      settled.forEach(s => { if (s.status === "fulfilled") allResults[s.value.id] = s.value.result; });
+      setLastResults(allResults);
+
+      // Auto-run synthesis, pre-mortem, and rewrite if 2+ results
+      if (Object.keys(allResults).length >= 2) {
+        const synthesisData = await runSynthesis(allResults, signal);
+        await runSteelMan(allResults, signal);
+        await runRewrite(allResults, synthesisData, signal);
       }
-    }));
-
-    const allResults = {};
-    settled.forEach(s => { if (s.status === "fulfilled") allResults[s.value.id] = s.value.result; });
-    setLastResults(allResults);
-
-    // Auto-run synthesis, pre-mortem, and rewrite if 2+ results
-    if (Object.keys(allResults).length >= 2) {
-      const synthesisData = await runSynthesis(allResults);
-      await runSteelMan(allResults);
-      await runRewrite(allResults, synthesisData);
+    } catch (err) {
+      if (err.name !== "AbortError") setGlobalError({ title: "Research Failed", message: err.message, retryable: true });
+    } finally {
+      abortRef.current = null;
     }
   };
 
@@ -757,7 +788,7 @@ export default function App() {
 
   const anyLoad = Object.values(loading).some(Boolean);
   const rc = Object.keys(results).length;
-  const busy = anyLoad || synthesizing || steelManning;
+  const busy = anyLoad || synthesizing || steelManning || rewriting;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--s0)", color: "var(--t1)", fontFamily: "var(--mono)", padding: 24, boxSizing: "border-box", "--s0": "#0B0B0F", "--s1": "#14141A", "--s2": "#1C1C24", "--bdr": "#2A2A35", "--t1": "#E4E4EC", "--t2": "#7A7A8C", "--accent": "#E84855", "--heading": "'Space Grotesk', sans-serif", "--mono": "'DM Mono', monospace" }}>
@@ -844,6 +875,7 @@ export default function App() {
                 {synthesizing && <div style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12, borderLeft: "3px solid #2EC4B6" }}><span style={{ fontSize: 24 }}>⚡</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>JTBD + Four Forces</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>Mapping jobs, forces, and friction...</div></div></div>}
                 {steelManning && <div style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12, borderLeft: "3px solid #E84855" }}><span style={{ fontSize: 24 }}>💀</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>Pre-Mortem Agent</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>Finding failure modes...</div></div></div>}
                 {rewriting && <div style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12, borderLeft: "3px solid #8B5CF6" }}><span style={{ fontSize: 24 }}>✨</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>Product Rewrite Agent</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>Rewriting offering from feedback...</div></div></div>}
+                <button onClick={stopResearch} style={{ alignSelf: "flex-start", padding: "8px 18px", borderRadius: 8, border: "1px solid #E8485566", background: "#E8485518", color: "#E84855", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>⏹ Stop</button>
                 <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
               </div>
             )}
