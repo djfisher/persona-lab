@@ -686,7 +686,7 @@ export default function App() {
         const p = personas.find(pp => pp.id === pid);
         return p ? `${p.name}: ${r.headline}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nBuy%: ${r.buyProbability}%\nCompetitor: ${r.competitorMention}` : "";
       }).filter(Boolean).join("\n---\n");
-      const text = await callAPI({ system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, maxTokens: 1000, signal });
+      const text = await callAPI({ system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, maxTokens: 1500, signal });
       setSteelMan(extractJSON(text)); setActiveTab("steelman");
     } catch (err) {
       if (err.name === "AbortError") throw err;
@@ -721,7 +721,7 @@ export default function App() {
         return p ? `PERSONA: ${p.name} (${p.role})\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}\nBuy%: ${r.buyProbability}%` : "";
       }).filter(Boolean).join("\n\n---\n\n");
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
-      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, maxTokens: 2000, signal });
+      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, maxTokens: 3000, signal });
       setRewrite(extractJSON(text)); setActiveTab("rewrite");
     } catch (err) {
       if (err.name === "AbortError") throw err;
