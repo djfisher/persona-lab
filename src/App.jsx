@@ -1,32 +1,7 @@
 import { useState } from "react";
+import { downloadFeedbackPDF } from "./FeedbackPDF";
+import { usePersonas } from "./personas/usePersonas";
 
-// ─── PERSONAS ───
-const DEFAULT_PERSONAS = [
-  {
-    id: "skeptical-dev", name: "Marcus Chen", role: "Senior Developer, 15 years exp.", avatar: "🧑‍💻", color: "#E84855",
-    traits: { skepticism: 9, technicalDepth: 9, priceConscious: 6, easeOfUseWeight: 7, brandLoyalty: 2 },
-    backstory: "Marcus has mass-migrated codebases off 3 different 'revolutionary' platforms that died or pivoted. He's been burned by vendor lock-in, hype-driven tooling, and 'it just works' marketing that never does. His default assumption is that any new tool is solving a problem nobody has, or solving it worse than what already exists. He rates most software a 4/10 and considers a 7 genuine praise.",
-    averageRating: 4,
-    petPeeves: ["Vague pricing ('contact sales')", "Buzzword-heavy marketing", "Poor documentation", "Vendor lock-in", "Electron apps that eat RAM"],
-    pedigree: { calibratedFrom: "40+ hours of adversarial technical interviews, open-source post-mortems, HN teardowns", biasProfile: "Over-indexes on technical debt and architecture concerns; may undervalue UX polish", blindSpot: "Dismisses products too quickly if marketing is cringe, even when the tool is solid" },
-  },
-  {
-    id: "pragmatic-pm", name: "Diane Okafor", role: "Product Manager, B2B SaaS", avatar: "👩‍💼", color: "#3185FC",
-    traits: { skepticism: 7, technicalDepth: 5, priceConscious: 8, easeOfUseWeight: 9, brandLoyalty: 3 },
-    backstory: "Diane has sat through hundreds of vendor pitches and watched her teams abandon tools 6 months after rollout because onboarding was painful. She evaluates everything through the lens of 'will my least technical team member actually use this daily?' She's allergic to feature bloat and suspicious of any product that can't explain its value in one sentence.",
-    averageRating: 4.5,
-    petPeeves: ["Complex onboarding", "Feature bloat", "No team/org pricing clarity", "Poor integrations with existing stack", "Products that require training"],
-    pedigree: { calibratedFrom: "200+ vendor evaluations, 15 failed tool rollouts, cross-functional adoption tracking", biasProfile: "Heavily weights team adoption over power-user features; may undervalue tools for solo use", blindSpot: "May reject genuinely powerful tools because she's optimizing for lowest-common-denominator usability" },
-  },
-  {
-    id: "budget-founder", name: "Raj Patel", role: "Bootstrapped Founder, 3x startup vet", avatar: "🧔", color: "#F9A03F",
-    traits: { skepticism: 8, technicalDepth: 6, priceConscious: 10, easeOfUseWeight: 8, brandLoyalty: 1 },
-    backstory: "Raj has bootstrapped three companies and burned through one VC-funded disaster. He calculates the ROI of every dollar and has replaced paid tools with open-source alternatives more times than he can count. He's deeply suspicious of subscription pricing and any product without a free tier worth using.",
-    averageRating: 3.5,
-    petPeeves: ["No free tier", "Usage-based billing surprises", "Startup tax (high per-seat pricing)", "Features locked behind enterprise tier", "No self-hosted option"],
-    pedigree: { calibratedFrom: "3 bootstrapped exits, 1 VC failure, extensive open-source community participation, indie hacker network", biasProfile: "Extreme price sensitivity may cause him to undervalue time savings; always biased toward DIY", blindSpot: "Sometimes penny-wise pound-foolish — rejects $50/mo tools that would save 10 hours/week" },
-  },
-];
 
 const RATING_DIMS = [
   { key: "overall", label: "Overall", icon: "◆" },
@@ -469,8 +444,8 @@ const PersonaEditor = ({ persona, setPersona, onSave, title, onCancel }) => (
 // MAIN APP
 // ═══════════════════════════════════════════
 export default function App() {
-  const [personas, setPersonas] = useState(DEFAULT_PERSONAS);
-  const [selectedIds, setSelectedIds] = useState(DEFAULT_PERSONAS.map(p => p.id));
+  const { personas, addPersona, updatePersona } = usePersonas();
+  const [selectedIds, setSelectedIds] = useState(() => personas.map(p => p.id));
   const [productName, setProductName] = useState("");
   const [productDesc, setProductDesc] = useState("");
   const [competitors, setCompetitors] = useState([""]);
@@ -490,10 +465,20 @@ export default function App() {
   const [generating, setGenerating] = useState(false);
   const [genNiche, setGenNiche] = useState("");
   const [lastResults, setLastResults] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   const [newPersona, setNewPersona] = useState({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } });
 
   const comps = competitors.filter(c => c.trim());
   const toggle = id => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      await downloadFeedbackPDF({ personas, results, synthesis, steelMan, productName, productDesc });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // ─── Auto-Generate Persona ───
   const genPersona = async () => {
@@ -502,8 +487,7 @@ export default function App() {
     try {
       const text = await callAPI({ system: PERSONA_GEN_PROMPT, userMessage: `Generate an adversarial persona for: ${genNiche}\nMake them deeply skeptical and calibrated to this industry.`, maxTokens: 1000 });
       const p = extractJSON(text);
-      const id = `gen-${Date.now()}`;
-      setPersonas(prev => [...prev, { ...p, id }]);
+      const id = addPersona(p);
       setSelectedIds(prev => [...prev, id]);
       setGenNiche(""); setView("research");
     } catch (err) { setGlobalError({ title: "Persona Generation Failed", message: err.message, retryable: true }); }
@@ -586,8 +570,8 @@ export default function App() {
     finally { setLoading(prev => ({ ...prev, [persona.id]: false })); }
   };
 
-  const save = () => { if (editPersona) { setPersonas(p => p.map(x => x.id === editPersona.id ? editPersona : x)); setEditPersona(null); } setView("research"); };
-  const create = () => { const id = `c-${Date.now()}`; setPersonas(p => [...p, { ...newPersona, id, petPeeves: newPersona.petPeeves.filter(x => x.trim()) }]); setSelectedIds(p => [...p, id]); setNewPersona({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } }); setView("research"); };
+  const save = () => { if (editPersona) { updatePersona(editPersona); setEditPersona(null); } setView("research"); };
+  const create = () => { const id = addPersona({ ...newPersona, id: `c-${Date.now()}`, petPeeves: newPersona.petPeeves.filter(x => x.trim()) }); setSelectedIds(p => [...p, id]); setNewPersona({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } }); setView("research"); };
 
   const anyLoad = Object.values(loading).some(Boolean);
   const rc = Object.keys(results).length;
@@ -689,6 +673,7 @@ export default function App() {
                 <TabBtn active={activeTab === "jtbd"} onClick={() => setActiveTab("jtbd")} badge={synthesis ? "✓" : null}>JTBD + Forces</TabBtn>
                 <TabBtn active={activeTab === "steelman"} onClick={() => setActiveTab("steelman")} badge={steelMan ? "💀" : null}>Pre-Mortem</TabBtn>
                 {rc >= 2 && !steelMan && !steelManning && <button onClick={() => runSteelMan(results)} style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid #E8485555", background: "#E8485515", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>💀 Tell Me Why I'm Wrong</button>}
+                <button onClick={handleDownloadPDF} disabled={downloading} style={{ marginLeft: rc >= 2 && !steelMan && !steelManning ? 0 : "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: downloading ? "var(--s2)" : "var(--s1)", color: downloading ? "var(--t2)" : "var(--t1)", fontFamily: "var(--mono)", fontSize: 11, cursor: downloading ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>{downloading ? "Generating..." : "↓ Download PDF"}</button>
               </div>
             )}
 
