@@ -163,7 +163,7 @@ const Footer = ({ productName, page }) => (
   </View>
 );
 
-const CoverPage = ({ productName, productDesc, personas, results, date }) => {
+const CoverPage = ({ productName, productDesc, personas, results, date, modelName }) => {
   const reviewedPersonas = personas.filter(p => results[p.id]);
   return (
     <Page size="A4" style={s.page}>
@@ -172,6 +172,7 @@ const CoverPage = ({ productName, productDesc, personas, results, date }) => {
         <View>
           <Text style={s.coverTitle}>Persona Research Lab</Text>
           <Text style={s.coverSub}>Adversarial Feedback · JTBD + Four Forces · Pre-Mortem</Text>
+          {modelName && <Text style={[s.coverSub, { color: ACCENT, fontFamily: "Helvetica-Bold", marginTop: 2 }]}>Analyzed with {modelName}</Text>}
         </View>
       </View>
 
@@ -643,13 +644,13 @@ const RewritePage = ({ rewrite }) => (
   </Page>
 );
 
-function buildDoc({ personas, results, synthesis, steelMan, rewrite, productName, productDesc }) {
+function buildDoc({ personas, results, synthesis, steelMan, rewrite, productName, productDesc, modelName }) {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const reviewed = personas.filter(p => results[p.id]);
 
   return (
     <Document title={`${productName} — Persona Research`} author="Persona Research Lab">
-      <CoverPage productName={productName} productDesc={productDesc} personas={personas} results={results} date={date} />
+      <CoverPage productName={productName} productDesc={productDesc} personas={personas} results={results} date={date} modelName={modelName} />
       {reviewed.map(p => <PersonaPage key={p.id} persona={p} result={results[p.id]} />)}
       {reviewed.length >= 2 && <ComparisonPage personas={personas} results={results} />}
       {synthesis && <JTBDPage synthesis={synthesis} />}
@@ -660,13 +661,14 @@ function buildDoc({ personas, results, synthesis, steelMan, rewrite, productName
   );
 }
 
-export async function downloadFeedbackPDF({ personas, results, synthesis, steelMan, rewrite, productName, productDesc }) {
-  const doc = buildDoc({ personas, results, synthesis, steelMan, rewrite, productName, productDesc });
+export async function downloadFeedbackPDF({ personas, results, synthesis, steelMan, rewrite, productName, productDesc, modelName }) {
+  const doc = buildDoc({ personas, results, synthesis, steelMan, rewrite, productName, productDesc, modelName });
   const blob = await pdf(doc).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${productName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-feedback.pdf`;
+  const safeModelName = (modelName || "model").replace(/[^a-z0-9]/gi, "-").toLowerCase();
+  a.download = `${productName.replace(/[^a-z0-9]/gi, "-").toLowerCase()}-feedback-${safeModelName}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }
