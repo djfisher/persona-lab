@@ -103,6 +103,23 @@ const s = StyleSheet.create({
   actionTitle: { fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", marginBottom: 8 },
   actionItem: { fontSize: 10, color: MID, marginBottom: 5, lineHeight: 1.5, paddingLeft: 6, borderLeftWidth: 2 },
 
+  // Wishlist + pain points
+  wishlistBox: { padding: 10, borderRadius: 6, borderWidth: 1, borderColor: "#99F6E4", backgroundColor: "#F0FDFA", marginTop: 8 },
+  wishlistTitle: { fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", color: TEAL, marginBottom: 5 },
+  wishlistItem: { flexDirection: "row", marginBottom: 4, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: TEAL },
+  wishlistText: { fontSize: 10, color: DARK, lineHeight: 1.5 },
+  painPointBox: { padding: 10, borderRadius: 6, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB", marginTop: 8 },
+  painPointTitle: { fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", color: AMBER, marginBottom: 5 },
+  painPointItem: { flexDirection: "row", marginBottom: 4, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: AMBER },
+  painPointText: { fontSize: 10, color: DARK, lineHeight: 1.5 },
+
+  // Market gaps
+  gapCard: { padding: 10, borderRadius: 6, borderLeftWidth: 3, borderLeftColor: TEAL, borderWidth: 1, borderColor: BORDER, marginBottom: 6 },
+  gapTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4 },
+  gapBadge: { fontSize: 7, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },
+  gapOpportunity: { fontSize: 10, color: TEAL, lineHeight: 1.5, marginBottom: 3 },
+  gapCompetitor: { fontSize: 9, color: MUTED, fontFamily: "Helvetica-Oblique" },
+
   // Pre-mortem
   verdictBox: { padding: 14, borderRadius: 8, backgroundColor: "#FFF1F2", borderWidth: 1, borderColor: "#FCA5A5", borderLeftWidth: 4, borderLeftColor: ACCENT, marginBottom: 14 },
   verdictText: { fontSize: 13, fontFamily: "Helvetica-Bold", color: ACCENT, lineHeight: 1.5 },
@@ -254,6 +271,26 @@ const PersonaPage = ({ persona, result }) => {
         <View style={[s.competitorBox, { flex: 1, marginTop: 0 }]}>
           <Text style={s.competitorTitle}>↗  Competitor Preferred</Text>
           <Text style={s.competitorText}>{result.competitorMention || "None specified"}</Text>
+        </View>
+      </View>
+
+      {/* Wishlist + Unsolved Pain Points */}
+      <View style={s.twoCol}>
+        <View style={[s.wishlistBox, { flex: 1 }]}>
+          <Text style={s.wishlistTitle}>★  Wishlist — What Would Seal the Deal</Text>
+          {(result.wishlist || []).map((w, i) => (
+            <View key={i} style={s.wishlistItem}>
+              <Text style={s.wishlistText}>{w}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[s.painPointBox, { flex: 1 }]}>
+          <Text style={s.painPointTitle}>◎  Pain Points No One Solves</Text>
+          {(result.unsolvedPainPoints || []).map((p, i) => (
+            <View key={i} style={s.painPointItem}>
+              <Text style={s.painPointText}>{p}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -425,6 +462,26 @@ const JTBDPage2 = ({ synthesis }) => (
       </View>
     )}
 
+    {/* Market Gaps */}
+    {synthesis.marketGaps?.length > 0 && (
+      <View style={{ marginBottom: 20 }}>
+        <Text style={[s.label, { marginBottom: 8 }]}>Market Gaps & White Space</Text>
+        {synthesis.marketGaps.map((g, i) => {
+          const dc = g.demand === "high" ? ACCENT : g.demand === "medium" ? AMBER : BLUE;
+          return (
+            <View key={i} style={s.gapCard}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <Text style={s.gapTitle}>{g.gap}</Text>
+                <Text style={[s.gapBadge, { color: dc, backgroundColor: dc + "18" }]}>{g.demand} demand</Text>
+              </View>
+              <Text style={s.gapOpportunity}>Opportunity: {g.opportunity}</Text>
+              {g.competitorAttempt && <Text style={s.gapCompetitor}>Competitors: {g.competitorAttempt}</Text>}
+            </View>
+          );
+        })}
+      </View>
+    )}
+
     {/* Action columns */}
     <View style={{ flexDirection: "row", gap: 10 }}>
       {[
@@ -491,7 +548,102 @@ const PreMortemPage = ({ steelMan }) => (
   </Page>
 );
 
-function buildDoc({ personas, results, synthesis, steelMan, productName, productDesc }) {
+const PURPLE = "#8B5CF6";
+
+const RewritePage = ({ rewrite }) => (
+  <Page size="A4" style={s.page}>
+    <View style={s.sectionHeader}>
+      <View style={[s.sectionAccent, { backgroundColor: PURPLE }]} />
+      <View>
+        <Text style={s.sectionTitle}>Improved Product Offering</Text>
+        <Text style={[s.sectionSub, { marginTop: 0 }]}>Rewritten using all persona feedback + JTBD synthesis</Text>
+      </View>
+    </View>
+
+    {/* Tagline + pitch */}
+    <View style={{ padding: 14, borderRadius: 8, borderWidth: 1, borderLeftWidth: 3, borderColor: "#DDD6FE", borderLeftColor: PURPLE, backgroundColor: "#FAF5FF", marginBottom: 14 }}>
+      <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK, lineHeight: 1.3, marginBottom: 8 }}>{rewrite.tagline}</Text>
+      <Text style={{ fontSize: 11, color: MID, lineHeight: 1.65, marginBottom: 8, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: "#DDD6FE" }}>{rewrite.elevatorPitch}</Text>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <Text style={[s.label, { marginBottom: 0, color: PURPLE }]}>Target Customer</Text>
+        <Text style={{ fontSize: 10, color: MID, flex: 1, lineHeight: 1.5 }}>{rewrite.targetCustomer}</Text>
+      </View>
+    </View>
+
+    {/* Key improvements + features to add */}
+    <View style={[s.twoCol, { marginBottom: 12 }]}>
+      <View style={s.col}>
+        <Text style={[s.label, { marginBottom: 6 }]}>Key Improvements</Text>
+        {(rewrite.keyImprovements || []).map((k, i) => (
+          <View key={i} style={{ padding: 8, borderRadius: 5, borderWidth: 1, borderLeftWidth: 3, borderColor: BORDER, borderLeftColor: PURPLE, marginBottom: 6 }}>
+            <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 2 }}>{k.title}</Text>
+            <Text style={{ fontSize: 9.5, color: MID, lineHeight: 1.5, marginBottom: 3 }}>{k.rationale}</Text>
+            <Text style={{ fontSize: 8.5, color: PURPLE }}>{(k.addressesPersonas || []).join(", ")}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={s.col}>
+        <Text style={[s.label, { marginBottom: 6 }]}>Features to Build</Text>
+        {(rewrite.featuresToAdd || []).map((f, i) => {
+          const pc = f.priority === "critical" ? ACCENT : f.priority === "high" ? AMBER : BLUE;
+          return (
+            <View key={i} style={{ padding: 8, borderRadius: 5, borderWidth: 1, borderLeftWidth: 3, borderColor: BORDER, borderLeftColor: pc, marginBottom: 6 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+                <Text style={{ fontSize: 11, fontFamily: "Helvetica-Bold", color: DARK, flex: 1 }}>{f.feature}</Text>
+                <Text style={[s.gapBadge, { color: pc, backgroundColor: pc + "18" }]}>{f.priority}</Text>
+              </View>
+              <Text style={{ fontSize: 9, color: MUTED }}>From: {f.source}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+
+    {/* Positioning + cut */}
+    <View style={[s.twoCol, { marginBottom: 12 }]}>
+      <View style={[s.fatalBox, { borderTopColor: TEAL }]}>
+        <Text style={[s.fatalTitle, { color: TEAL }]}>Positioning vs Competitors</Text>
+        <Text style={s.fatalText}>{rewrite.positioningStatement}</Text>
+      </View>
+      <View style={[s.fatalBox, { borderTopColor: ACCENT }]}>
+        <Text style={[s.fatalTitle, { color: ACCENT }]}>Cut or Deprioritize</Text>
+        {(rewrite.featuresToCut || []).map((f, i) => (
+          <View key={i} style={{ marginBottom: 6, paddingLeft: 6, borderLeftWidth: 2, borderLeftColor: ACCENT }}>
+            <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK }}>{f.feature}</Text>
+            <Text style={{ fontSize: 9, color: MID, marginTop: 1 }}>{f.reason}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+
+    {/* Per-persona messaging */}
+    {(rewrite.messagingByPersona || []).length > 0 && (
+      <View style={{ marginBottom: 12 }}>
+        <Text style={[s.label, { marginBottom: 6 }]}>Messaging by Persona</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {rewrite.messagingByPersona.map((m, i) => (
+            <View key={i} style={{ flex: 1, minWidth: "45%", padding: 8, borderRadius: 5, borderWidth: 1, borderLeftWidth: 3, borderColor: "#FDE68A", borderLeftColor: AMBER, backgroundColor: "#FFFBEB" }}>
+              <Text style={{ fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, color: AMBER, fontFamily: "Helvetica-Bold", marginBottom: 3 }}>{m.persona}</Text>
+              <Text style={{ fontSize: 10, color: DARK, fontFamily: "Helvetica-Oblique", lineHeight: 1.5 }}>"{m.hook}"</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    )}
+
+    {/* Pricing */}
+    {rewrite.pricingGuidance && (
+      <View style={{ padding: 10, borderRadius: 6, borderWidth: 1, borderLeftWidth: 3, borderColor: "#FDE68A", borderLeftColor: AMBER, backgroundColor: "#FFFBEB" }}>
+        <Text style={[s.fatalTitle, { color: AMBER }]}>Pricing Guidance</Text>
+        <Text style={s.fatalText}>{rewrite.pricingGuidance}</Text>
+      </View>
+    )}
+
+    <Footer productName={""} />
+  </Page>
+);
+
+function buildDoc({ personas, results, synthesis, steelMan, rewrite, productName, productDesc }) {
   const date = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const reviewed = personas.filter(p => results[p.id]);
 
@@ -503,12 +655,13 @@ function buildDoc({ personas, results, synthesis, steelMan, productName, product
       {synthesis && <JTBDPage synthesis={synthesis} />}
       {synthesis && <JTBDPage2 synthesis={synthesis} />}
       {steelMan && <PreMortemPage steelMan={steelMan} />}
+      {rewrite && <RewritePage rewrite={rewrite} />}
     </Document>
   );
 }
 
-export async function downloadFeedbackPDF({ personas, results, synthesis, steelMan, productName, productDesc }) {
-  const doc = buildDoc({ personas, results, synthesis, steelMan, productName, productDesc });
+export async function downloadFeedbackPDF({ personas, results, synthesis, steelMan, rewrite, productName, productDesc }) {
+  const doc = buildDoc({ personas, results, synthesis, steelMan, rewrite, productName, productDesc });
   const blob = await pdf(doc).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
