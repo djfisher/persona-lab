@@ -121,8 +121,16 @@ Respond ONLY with valid JSON:
 }`;
 
 // ─── API & UTILS ───
-async function callAPI({ system, userMessage, maxTokens = 4096, signal }, retries = 3) {
+async function callAPI({ system, userMessage, maxTokens = 4096, thinking = false, signal }, retries = 3) {
   const API_KEY = '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';
+
+  const body = {
+    model: "claude-sonnet-4-6",
+    max_tokens: maxTokens,
+    system,
+    messages: [{ role: "user", content: userMessage }],
+    ...(thinking && { thinking: { type: "adaptive" } }),
+  };
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -133,13 +141,7 @@ async function callAPI({ system, userMessage, maxTokens = 4096, signal }, retrie
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true"
     },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: maxTokens,
-      system: system,
-      messages: [{ role: "user", content: userMessage }],
-      thinking: { type: "adaptive" }
-    }),
+    body: JSON.stringify(body),
   });
 
   if (resp.status === 429 && retries > 0) {
@@ -148,7 +150,7 @@ async function callAPI({ system, userMessage, maxTokens = 4096, signal }, retrie
       const t = setTimeout(resolve, retryAfter * 1000);
       signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
     });
-    return callAPI({ system, userMessage, maxTokens, signal }, retries - 1);
+    return callAPI({ system, userMessage, maxTokens, thinking, signal }, retries - 1);
   }
 
   if (!resp.ok) {
@@ -719,7 +721,7 @@ export default function App() {
         return p ? `PERSONA: ${p.name} (${p.role})\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}\nBuy%: ${r.buyProbability}%` : "";
       }).filter(Boolean).join("\n\n---\n\n");
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
-      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, maxTokens: 1500, signal });
+      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.`, maxTokens: 2000, signal });
       setRewrite(extractJSON(text)); setActiveTab("rewrite");
     } catch (err) {
       if (err.name === "AbortError") throw err;
@@ -746,6 +748,7 @@ export default function App() {
           const text = await callAPI({
             system: buildSystemPrompt(persona, comps, cynicism),
             userMessage: `Review this product:\n\nProduct: ${productName}\nDescription: ${productDesc || "No description — evaluate from your knowledge."}\n${comps.length ? `Known Competitors: ${comps.join(", ")}` : ""}\n\nGive your honest assessment.`,
+            thinking: true,
             signal,
           });
           const parsed = extractJSON(text);
