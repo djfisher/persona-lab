@@ -76,6 +76,28 @@ Respond ONLY with valid JSON:
   "marketGaps": [{ "gap": "<unmet need no one is solving well>", "demand": "high|medium|low", "personasAffected": ["<name1>", "<name2>"], "opportunity": "<how this product could own this space>", "competitorAttempt": "<how competitors try and fail at this>" }]
 }`;
 
+const REWRITE_PROMPT = `You are a senior product strategist. Given adversarial persona feedback, JTBD synthesis, wishlists, and market gap analysis, rewrite and sharpen the product offering.
+
+RULES:
+- Ground every recommendation in specific evidence from the feedback — no generic advice
+- Preserve the core value prop but sharpen the positioning dramatically
+- Be specific about features ("add one-tap lab ordering" not "improve the process")
+- Prioritize ruthlessly: most things are not critical
+- The rewritten pitch must speak directly to the jobs-to-be-done, not the features
+
+Respond ONLY with valid JSON:
+{
+  "tagline": "<rewritten one-liner that speaks to the core job-to-be-done>",
+  "elevatorPitch": "<2-3 sentence rewritten product description that directly addresses the top concerns>",
+  "targetCustomer": "<sharpened ICP — who this product is actually for, based on who the feedback resonates with most>",
+  "keyImprovements": [{ "title": "<improvement name>", "rationale": "<grounded in specific feedback>", "addressesPersonas": ["<name>"] }],
+  "featuresToAdd": [{ "feature": "<specific feature>", "source": "<which persona wishlist or market gap drove this>", "priority": "critical|high|medium" }],
+  "featuresToCut": [{ "feature": "<what to cut or deprioritize>", "reason": "<why it's a distraction or liability>" }],
+  "positioningStatement": "<how to win vs named competitors, using the market gaps>",
+  "messagingByPersona": [{ "persona": "<name>", "hook": "<specific one-liner that would resonate with this exact person>" }],
+  "pricingGuidance": "<actionable pricing recommendation grounded in the price-sensitivity signals>"
+}`;
+
 const STEELMAN_PROMPT = `You are a startup failure analyst. Given persona feedback, generate a pre-mortem: most likely reasons this business FAILS within 12 months.
 RULES: Ignore positives. Be specific to THIS product. Think market timing, competitive dynamics, unit economics, execution risk.
 
@@ -444,6 +466,107 @@ const JTBDPanel = ({ synthesis }) => {
   );
 };
 
+// ─── Rewrite Panel ───
+const RewritePanel = ({ rewrite }) => {
+  if (!rewrite) return null;
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg, #8B5CF6, #3185FC)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>✨</div>
+        <div>
+          <div style={{ fontFamily: "var(--heading)", fontWeight: 800, fontSize: 18, color: "var(--t1)" }}>Improved Product Offering</div>
+          <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--t2)" }}>Rewritten using all persona feedback + JTBD synthesis</div>
+        </div>
+      </div>
+
+      {/* Tagline + Pitch + ICP */}
+      <Card style={{ marginBottom: 12, borderLeft: "3px solid #8B5CF6" }}>
+        <div style={{ fontSize: 22, fontFamily: "var(--heading)", fontWeight: 800, color: "var(--t1)", lineHeight: 1.3, marginBottom: 12 }}>{rewrite.tagline}</div>
+        <div style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--t1)", lineHeight: 1.7, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--bdr)" }}>{rewrite.elevatorPitch}</div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, color: "#8B5CF6", fontFamily: "var(--mono)", fontWeight: 700, whiteSpace: "nowrap", marginTop: 1 }}>Target Customer</div>
+          <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--t2)", lineHeight: 1.5 }}>{rewrite.targetCustomer}</div>
+        </div>
+      </Card>
+
+      {/* Key Improvements + Features to Add */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <div>
+          <SH sub="Changes grounded in persona feedback">◆ Key Improvements</SH>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(rewrite.keyImprovements || []).map((k, i) => (
+              <Card key={i} style={{ borderLeft: "3px solid #8B5CF6" }}>
+                <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, color: "var(--t1)", marginBottom: 4 }}>{k.title}</div>
+                <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--t2)", lineHeight: 1.5, marginBottom: 4 }}>{k.rationale}</div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {(k.addressesPersonas || []).map(n => <span key={n} style={{ fontSize: 9, color: "#8B5CF6", background: "#8B5CF618", border: "1px solid #8B5CF633", borderRadius: 4, padding: "1px 6px", fontFamily: "var(--mono)" }}>{n}</span>)}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+        <div>
+          <SH sub="Prioritized by impact on conversion">◆ Features to Build</SH>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {(rewrite.featuresToAdd || []).map((f, i) => {
+              const pc = f.priority === "critical" ? "#E84855" : f.priority === "high" ? "#F9A03F" : "#3185FC";
+              return (
+                <Card key={i} style={{ borderLeft: `3px solid ${pc}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, color: "var(--t1)" }}>{f.feature}</div>
+                    <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, color: pc, background: pc + "18", padding: "2px 8px", borderRadius: 4, fontFamily: "var(--mono)" }}>{f.priority}</span>
+                  </div>
+                  <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--t2)" }}>From: {f.source}</div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Positioning + Features to Cut */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        <Card style={{ borderTop: "3px solid #2EC4B6" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, color: "#2EC4B6", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 8 }}>◎ Positioning vs Competitors</div>
+          <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--t1)", lineHeight: 1.6 }}>{rewrite.positioningStatement}</div>
+        </Card>
+        <Card style={{ borderTop: "3px solid #E84855" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, color: "#E84855", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 8 }}>✕ Cut or Deprioritize</div>
+          {(rewrite.featuresToCut || []).map((f, i) => (
+            <div key={i} style={{ marginBottom: 8, paddingLeft: 8, borderLeft: "2px solid #E84855" }}>
+              <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--t1)", fontWeight: 600 }}>{f.feature}</div>
+              <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--t2)", marginTop: 2 }}>{f.reason}</div>
+            </div>
+          ))}
+        </Card>
+      </div>
+
+      {/* Per-Persona Messaging */}
+      {(rewrite.messagingByPersona || []).length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <SH sub="One hook per persona — what actually lands">◆ Messaging by Persona</SH>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
+            {rewrite.messagingByPersona.map((m, i) => (
+              <Card key={i} style={{ borderLeft: "3px solid #F9A03F" }}>
+                <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#F9A03F", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 5 }}>{m.persona}</div>
+                <div style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--t1)", lineHeight: 1.5, fontStyle: "italic" }}>"{m.hook}"</div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pricing */}
+      {rewrite.pricingGuidance && (
+        <Card style={{ borderLeft: "3px solid #F9A03F" }}>
+          <div style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1.5, color: "#F9A03F", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 6 }}>$ Pricing Guidance</div>
+          <div style={{ fontSize: 13, fontFamily: "var(--mono)", color: "var(--t1)", lineHeight: 1.6 }}>{rewrite.pricingGuidance}</div>
+        </Card>
+      )}
+    </div>
+  );
+};
+
 // ─── Persona Editor ───
 const PersonaEditor = ({ persona, setPersona, onSave, title, onCancel }) => (
   <div style={{ maxWidth: 560, margin: "0 auto" }}>
@@ -499,8 +622,10 @@ export default function App() {
   const [viewMethodology, setViewMethodology] = useState(null);
   const [synthesis, setSynthesis] = useState(null);
   const [steelMan, setSteelMan] = useState(null);
+  const [rewrite, setRewrite] = useState(null);
   const [synthesizing, setSynthesizing] = useState(false);
   const [steelManning, setSteelManning] = useState(false);
+  const [rewriting, setRewriting] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genNiche, setGenNiche] = useState("");
   const [lastResults, setLastResults] = useState(null);
@@ -513,7 +638,7 @@ export default function App() {
   const handleDownloadPDF = async () => {
     setDownloading(true);
     try {
-      await downloadFeedbackPDF({ personas, results, synthesis, steelMan, productName, productDesc });
+      await downloadFeedbackPDF({ personas, results, synthesis, steelMan, rewrite, productName, productDesc });
     } finally {
       setDownloading(false);
     }
@@ -553,18 +678,35 @@ export default function App() {
     try {
       const summary = Object.entries(personaResults).map(([pid, r]) => {
         const p = personas.find(pp => pp.id === pid);
-        return p ? `PERSONA: ${p.name} (${p.role})\nRatings: Overall ${r.ratings.overall}, Value ${r.ratings.value}, Usability ${r.ratings.usability}, Reliability ${r.ratings.reliability}, Recommend ${r.ratings.wouldRecommend}\nBuy%: ${r.buyProbability}%\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nCompetitor: ${r.competitorMention}` : "";
+        return p ? `PERSONA: ${p.name} (${p.role})\nRatings: Overall ${r.ratings.overall}, Value ${r.ratings.value}, Usability ${r.ratings.usability}, Reliability ${r.ratings.reliability}, Recommend ${r.ratings.wouldRecommend}\nBuy%: ${r.buyProbability}%\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nCompetitor: ${r.competitorMention}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}` : "";
       }).filter(Boolean).join("\n\n---\n\n");
       const text = await callAPI({ system: JTBD_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}\n\nAnalyze using JTBD with Four Forces and friction mapping.` });
-      setSynthesis(extractJSON(text)); setActiveTab("jtbd");
+      const data = extractJSON(text);
+      setSynthesis(data); setActiveTab("jtbd");
+      return data;
     } catch (err) { setGlobalError({ title: "JTBD Synthesis Failed", message: err.message, detail: err.message, retryable: true }); }
     finally { setSynthesizing(false); }
+  };
+
+  // ─── Product Rewrite ───
+  const runRewrite = async (personaResults, synthesisData) => {
+    setRewriting(true);
+    try {
+      const personaSummary = Object.entries(personaResults).map(([pid, r]) => {
+        const p = personas.find(pp => pp.id === pid);
+        return p ? `PERSONA: ${p.name} (${p.role})\nHeadline: ${r.headline}\nReview: ${r.review}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nWishlist: ${(r.wishlist||[]).join("; ")}\nUnsolved Pain Points: ${(r.unsolvedPainPoints||[]).join("; ")}\nBuy%: ${r.buyProbability}%` : "";
+      }).filter(Boolean).join("\n\n---\n\n");
+      const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
+      const text = await callAPI({ system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}\n\nRewrite the product offering based on all of this.` });
+      setRewrite(extractJSON(text)); setActiveTab("rewrite");
+    } catch (err) { setGlobalError({ title: "Product Rewrite Failed", message: err.message, detail: err.message, retryable: true }); }
+    finally { setRewriting(false); }
   };
 
   // ─── Main Research (Parallel) ───
   const runResearch = async () => {
     if (!productName.trim()) return;
-    setGlobalError(null); setSynthesis(null); setSteelMan(null); setActiveTab("feedback"); setPersonaErrors({});
+    setGlobalError(null); setSynthesis(null); setSteelMan(null); setRewrite(null); setActiveTab("feedback"); setPersonaErrors({});
     const sel = personas.filter(p => selectedIds.includes(p.id));
     if (!sel.length) return;
     const nl = {}; sel.forEach(p => nl[p.id] = true); setLoading(nl); setResults({});
@@ -591,10 +733,11 @@ export default function App() {
     settled.forEach(s => { if (s.status === "fulfilled") allResults[s.value.id] = s.value.result; });
     setLastResults(allResults);
 
-    // Auto-run synthesis + pre-mortem if 2+ results
+    // Auto-run synthesis, pre-mortem, and rewrite if 2+ results
     if (Object.keys(allResults).length >= 2) {
-      await runSynthesis(allResults);
+      const synthesisData = await runSynthesis(allResults);
       await runSteelMan(allResults);
+      await runRewrite(allResults, synthesisData);
     }
   };
 
@@ -695,11 +838,12 @@ export default function App() {
             <ErrorBanner error={globalError} onDismiss={() => setGlobalError(null)} onRetry={globalError?.title?.includes("JTBD") && lastResults ? () => runSynthesis(lastResults) : globalError?.title?.includes("Pre-Mortem") && lastResults ? () => runSteelMan(lastResults) : globalError?.title?.includes("Persona") ? genPersona : null} />
 
             {/* Loading */}
-            {(anyLoad || synthesizing || steelManning) && (
+            {(anyLoad || synthesizing || steelManning || rewriting) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                 {personas.filter(p => loading[p.id]).map(p => <div key={p.id} style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12 }}><span style={{ fontSize: 24 }}>{p.avatar}</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>{p.name} reviewing...</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>{CYNICISM_LABELS[cynicism]} mode</div></div></div>)}
                 {synthesizing && <div style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12, borderLeft: "3px solid #2EC4B6" }}><span style={{ fontSize: 24 }}>⚡</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>JTBD + Four Forces</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>Mapping jobs, forces, and friction...</div></div></div>}
                 {steelManning && <div style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12, borderLeft: "3px solid #E84855" }}><span style={{ fontSize: 24 }}>💀</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>Pre-Mortem Agent</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>Finding failure modes...</div></div></div>}
+                {rewriting && <div style={{ padding: 16, background: "var(--s1)", borderRadius: 10, border: "1px solid var(--bdr)", display: "flex", alignItems: "center", gap: 12, borderLeft: "3px solid #8B5CF6" }}><span style={{ fontSize: 24 }}>✨</span><div><div style={{ fontWeight: 600, fontSize: 13, color: "var(--t1)" }}>Product Rewrite Agent</div><div style={{ fontSize: 11, color: "var(--t2)", marginTop: 2, animation: "pulse 1.5s infinite" }}>Rewriting offering from feedback...</div></div></div>}
                 <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
               </div>
             )}
@@ -711,6 +855,7 @@ export default function App() {
                 {rc > 1 && <TabBtn active={activeTab === "comparison"} onClick={() => setActiveTab("comparison")}>Compare</TabBtn>}
                 <TabBtn active={activeTab === "jtbd"} onClick={() => setActiveTab("jtbd")} badge={synthesis ? "✓" : null}>JTBD + Forces</TabBtn>
                 <TabBtn active={activeTab === "steelman"} onClick={() => setActiveTab("steelman")} badge={steelMan ? "💀" : null}>Pre-Mortem</TabBtn>
+                <TabBtn active={activeTab === "rewrite"} onClick={() => setActiveTab("rewrite")} badge={rewrite ? "✨" : null}>Rewrite</TabBtn>
                 {rc >= 2 && !steelMan && !steelManning && <button onClick={() => runSteelMan(results)} style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid #E8485555", background: "#E8485515", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>💀 Tell Me Why I'm Wrong</button>}
                 <button onClick={handleDownloadPDF} disabled={downloading} style={{ marginLeft: rc >= 2 && !steelMan && !steelManning ? 0 : "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: downloading ? "var(--s2)" : "var(--s1)", color: downloading ? "var(--t2)" : "var(--t1)", fontFamily: "var(--mono)", fontSize: 11, cursor: downloading ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>{downloading ? "Generating..." : "↓ Download PDF"}</button>
               </div>
@@ -739,6 +884,9 @@ export default function App() {
 
             {/* Pre-Mortem Tab */}
             {activeTab === "steelman" && (steelMan ? <SteelManPanel steelMan={steelMan} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>💀</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No pre-mortem yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Click 'Tell Me Why I'm Wrong'"}</div>{rc >= 2 && !steelManning && <button onClick={() => runSteelMan(results)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#E84855", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💀 Tell Me Why I'm Wrong</button>}</Card>)}
+
+            {/* Rewrite Tab */}
+            {activeTab === "rewrite" && (rewrite ? <RewritePanel rewrite={rewrite} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>✨</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No rewrite yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Runs automatically after JTBD synthesis"}</div>{rc >= 2 && synthesis && !rewriting && <button onClick={() => runRewrite(results, synthesis)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✨ Rewrite Product Offering</button>}</Card>)}
           </>
         )}
       </div>
