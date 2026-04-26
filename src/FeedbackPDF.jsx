@@ -103,6 +103,23 @@ const s = StyleSheet.create({
   actionTitle: { fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", marginBottom: 8 },
   actionItem: { fontSize: 10, color: MID, marginBottom: 5, lineHeight: 1.5, paddingLeft: 6, borderLeftWidth: 2 },
 
+  // Wishlist + pain points
+  wishlistBox: { padding: 10, borderRadius: 6, borderWidth: 1, borderColor: "#99F6E4", backgroundColor: "#F0FDFA", marginTop: 8 },
+  wishlistTitle: { fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", color: TEAL, marginBottom: 5 },
+  wishlistItem: { flexDirection: "row", marginBottom: 4, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: TEAL },
+  wishlistText: { fontSize: 10, color: DARK, lineHeight: 1.5 },
+  painPointBox: { padding: 10, borderRadius: 6, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB", marginTop: 8 },
+  painPointTitle: { fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", color: AMBER, marginBottom: 5 },
+  painPointItem: { flexDirection: "row", marginBottom: 4, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: AMBER },
+  painPointText: { fontSize: 10, color: DARK, lineHeight: 1.5 },
+
+  // Market gaps
+  gapCard: { padding: 10, borderRadius: 6, borderLeftWidth: 3, borderLeftColor: TEAL, borderWidth: 1, borderColor: BORDER, marginBottom: 6 },
+  gapTitle: { fontSize: 12, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 4 },
+  gapBadge: { fontSize: 7, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold", paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },
+  gapOpportunity: { fontSize: 10, color: TEAL, lineHeight: 1.5, marginBottom: 3 },
+  gapCompetitor: { fontSize: 9, color: MUTED, fontFamily: "Helvetica-Oblique" },
+
   // Pre-mortem
   verdictBox: { padding: 14, borderRadius: 8, backgroundColor: "#FFF1F2", borderWidth: 1, borderColor: "#FCA5A5", borderLeftWidth: 4, borderLeftColor: ACCENT, marginBottom: 14 },
   verdictText: { fontSize: 13, fontFamily: "Helvetica-Bold", color: ACCENT, lineHeight: 1.5 },
@@ -254,6 +271,26 @@ const PersonaPage = ({ persona, result }) => {
         <View style={[s.competitorBox, { flex: 1, marginTop: 0 }]}>
           <Text style={s.competitorTitle}>↗  Competitor Preferred</Text>
           <Text style={s.competitorText}>{result.competitorMention || "None specified"}</Text>
+        </View>
+      </View>
+
+      {/* Wishlist + Unsolved Pain Points */}
+      <View style={s.twoCol}>
+        <View style={[s.wishlistBox, { flex: 1 }]}>
+          <Text style={s.wishlistTitle}>★  Wishlist — What Would Seal the Deal</Text>
+          {(result.wishlist || []).map((w, i) => (
+            <View key={i} style={s.wishlistItem}>
+              <Text style={s.wishlistText}>{w}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={[s.painPointBox, { flex: 1 }]}>
+          <Text style={s.painPointTitle}>◎  Pain Points No One Solves</Text>
+          {(result.unsolvedPainPoints || []).map((p, i) => (
+            <View key={i} style={s.painPointItem}>
+              <Text style={s.painPointText}>{p}</Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -422,6 +459,26 @@ const JTBDPage2 = ({ synthesis }) => (
             {o.riskIfIgnored && <Text style={s.optionRisk}>Risk if ignored: {o.riskIfIgnored}</Text>}
           </View>
         ))}
+      </View>
+    )}
+
+    {/* Market Gaps */}
+    {synthesis.marketGaps?.length > 0 && (
+      <View style={{ marginBottom: 20 }}>
+        <Text style={[s.label, { marginBottom: 8 }]}>Market Gaps & White Space</Text>
+        {synthesis.marketGaps.map((g, i) => {
+          const dc = g.demand === "high" ? ACCENT : g.demand === "medium" ? AMBER : BLUE;
+          return (
+            <View key={i} style={s.gapCard}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <Text style={s.gapTitle}>{g.gap}</Text>
+                <Text style={[s.gapBadge, { color: dc, backgroundColor: dc + "18" }]}>{g.demand} demand</Text>
+              </View>
+              <Text style={s.gapOpportunity}>Opportunity: {g.opportunity}</Text>
+              {g.competitorAttempt && <Text style={s.gapCompetitor}>Competitors: {g.competitorAttempt}</Text>}
+            </View>
+          );
+        })}
       </View>
     )}
 

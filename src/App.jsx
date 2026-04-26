@@ -45,7 +45,9 @@ Respond ONLY with valid JSON, no markdown fences:
   "dealbreakers": ["<reason 1>", "<reason 2>"],
   "competitorMention": "<specific competitor and why>",
   "buyProbability": <0-100>,
-  "buyParams": { "val": <value rating>, "usa": <usability rating>, "pri": ${persona.traits.priceConscious}, "ske": ${persona.traits.skepticism} }
+  "buyParams": { "val": <value rating>, "usa": <usability rating>, "pri": ${persona.traits.priceConscious}, "ske": ${persona.traits.skepticism} },
+  "wishlist": ["<specific feature a competitor has that you love and this product lacks>", "<capability that would seal the deal for you personally>"],
+  "unsolvedPainPoints": ["<pain point the entire market including competitors still fails to solve>"]
 }`;
 }
 
@@ -58,6 +60,7 @@ RULES:
 - Identify FRICTION POINTS: Where personas want contradictory things
 - Rate switchingCost 1-10
 - 3-5 jobs, 2-4 product options, 2-3 actions, 2-3 validation questions, 2-3 blind spots
+- 2-4 market gaps: unmet needs the whole market including competitors fails to solve — these are white-space opportunities
 
 Respond ONLY with valid JSON:
 {
@@ -69,7 +72,8 @@ Respond ONLY with valid JSON:
   "productOptions": [{ "title": "<name>", "description": "<specific feature>", "jobsAddressed": ["<ids>"], "effort": "low|medium|high", "impact": "low|medium|high", "riskIfIgnored": "<consequence>" }],
   "immediateActions": ["<concrete>"],
   "validationQuestions": ["<specific>"],
-  "blindSpots": ["<what personas miss>"]
+  "blindSpots": ["<what personas miss>"],
+  "marketGaps": [{ "gap": "<unmet need no one is solving well>", "demand": "high|medium|low", "personasAffected": ["<name1>", "<name2>"], "opportunity": "<how this product could own this space>", "competitorAttempt": "<how competitors try and fail at this>" }]
 }`;
 
 const STEELMAN_PROMPT = `You are a startup failure analyst. Given persona feedback, generate a pre-mortem: most likely reasons this business FAILS within 12 months.
@@ -261,6 +265,16 @@ const FeedbackPanel = ({ result, persona, onViewMethodology }) => {
           <div style={{ fontSize: 12, color: "var(--t1)", fontFamily: "var(--mono)", lineHeight: 1.5 }}>{result.competitorMention || "None specified"}</div>
         </div>
       </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 10 }}>
+        <div style={{ padding: 12, background: "#2EC4B612", borderRadius: 8, border: "1px solid #2EC4B633" }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#2EC4B6", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 6 }}>★ Wishlist — What Would Seal the Deal</div>
+          {(result.wishlist || []).map((w, i) => <div key={i} style={{ fontSize: 12, color: "var(--t1)", fontFamily: "var(--mono)", marginBottom: 4, paddingLeft: 8, borderLeft: "2px solid #2EC4B6" }}>{w}</div>)}
+        </div>
+        <div style={{ padding: 12, background: "#F9A03F12", borderRadius: 8, border: "1px solid #F9A03F33" }}>
+          <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1, color: "#F9A03F", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 6 }}>◎ Pain Points No One Solves</div>
+          {(result.unsolvedPainPoints || []).map((p, i) => <div key={i} style={{ fontSize: 12, color: "var(--t1)", fontFamily: "var(--mono)", marginBottom: 4, paddingLeft: 8, borderLeft: "2px solid #F9A03F" }}>{p}</div>)}
+        </div>
+      </div>
     </Card>
   );
 };
@@ -396,6 +410,31 @@ const JTBDPanel = ({ synthesis }) => {
           </Card>)}
         </div>
       </>}
+
+      {/* Market Gaps */}
+      {synthesis.marketGaps?.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <SH sub="Unmet needs the whole market — including competitors — fails to solve">◆ Market Gaps & White Space</SH>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {synthesis.marketGaps.map((g, i) => {
+              const dc = g.demand === "high" ? "#E84855" : g.demand === "medium" ? "#F9A03F" : "#3185FC";
+              return (
+                <Card key={i} style={{ borderLeft: "3px solid #2EC4B6" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                    <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 14, color: "var(--t1)", flex: 1 }}>{g.gap}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginLeft: 12, flexShrink: 0 }}>
+                      <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, color: dc, background: dc + "18", padding: "2px 8px", borderRadius: 4, fontFamily: "var(--mono)" }}>{g.demand} demand</span>
+                      {(g.personasAffected || []).map(n => <span key={n} style={{ fontSize: 10, color: "var(--t2)", fontFamily: "var(--mono)" }}>{n}</span>)}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, fontFamily: "var(--mono)", color: "#2EC4B6", lineHeight: 1.5, marginBottom: 4 }}>Opportunity: {g.opportunity}</div>
+                  {g.competitorAttempt && <div style={{ fontSize: 11, fontFamily: "var(--mono)", color: "var(--t2)", fontStyle: "italic" }}>Competitors: {g.competitorAttempt}</div>}
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Action columns */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
