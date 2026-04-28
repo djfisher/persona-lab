@@ -12,35 +12,29 @@ export default defineConfig({
       apply: 'build', // Only obfuscate on build
       options: {
         compact: true,
-        controlFlowFlattening: true,
-        controlFlowFlatteningThreshold: 0.75,
-        deadCodeInjection: true,
-        deadCodeInjectionThreshold: 0.4,
+        controlFlowFlattening: false, // Disabling this massively speeds up builds
+        deadCodeInjection: false,     // Disabling this massively speeds up builds
         debugProtection: true,
-        debugProtectionInterval: 2000,
-        disableConsoleOutput: false, // Keep console output for debugging if needed
+        debugProtectionInterval: 4000,
+        disableConsoleOutput: false,
         identifierNamesGenerator: 'hexadecimal',
         log: false,
         renameGlobals: false,
         rotateStringArray: true,
-        selfDefending: true,
+        selfDefending: false,         // Disabling this speeds up builds and prevents some infinite loops
         shuffleStringArray: true,
-        splitStrings: true,
-        splitStringsChunkLength: 10,
+        splitStrings: false,          // Disabling this prevents huge performance hits on large strings
         stringArray: true,
-        stringArrayCallsTransform: true,
-        stringArrayCallsTransformThreshold: 0.75,
         stringArrayEncoding: ['base64'],
-        stringArrayIndexesType: ['hexadecimal-number'],
         stringArrayIndexShift: true,
         stringArrayRotate: true,
         stringArrayShuffle: true,
-        stringArrayWrappersCount: 2,
+        stringArrayWrappersCount: 1,
         stringArrayWrappersChainedCalls: true,
-        stringArrayWrappersParametersMaxCount: 4,
-        stringArrayWrappersType: 'function',
-        stringArrayThreshold: 0.75,
-        transformObjectKeys: true,
+        stringArrayWrappersParametersMaxCount: 2,
+        stringArrayWrappersType: 'variable',
+        stringArrayThreshold: 0.8,
+        transformObjectKeys: false,   // Disabling this prevents React/Vite chunking errors
         unicodeEscapeSequence: false
       }
     })
