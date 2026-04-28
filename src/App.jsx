@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { downloadFeedbackPDF } from "./FeedbackPDF";
 import { usePersonas } from "./personas/usePersonas";
 import { buildSystemPrompt, JTBD_PROMPT, REWRITE_PROMPT, STEELMAN_PROMPT, PERSONA_GEN_PROMPT } from "./prompts/index.js";
-import { MethodologyPanel, FeedbackPanel, SteelManPanel, JTBDPanel, RewritePanel, PersonaEditor, SettingsPanel } from "./components/panels/index.jsx";
+import { MethodologyPanel, FeedbackPanel, SteelManPanel, JTBDPanel, RewritePanel, PersonaEditor, SettingsPanel, WelcomeModal } from "./components/panels/index.jsx";
+import { EXAMPLE_DATA } from "./data/exampleData.js";
 
 import { callAPI, extractJSON, MODELS } from "./api/llm.js";
 import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
@@ -40,6 +41,37 @@ export default function App() {
   const [lastResults, setLastResults] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [newPersona, setNewPersona] = useState({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } });
+  
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem("persona-lab-welcome-seen")) {
+      setShowWelcome(true);
+    }
+  }, []);
+
+  const handleDismissWelcome = () => {
+    localStorage.setItem("persona-lab-welcome-seen", "true");
+    setShowWelcome(false);
+  };
+
+  const loadExampleData = () => {
+    setProductName(EXAMPLE_DATA.productName);
+    setProductDesc(EXAMPLE_DATA.productDesc);
+    setCompetitors(EXAMPLE_DATA.competitors);
+    setResults(EXAMPLE_DATA.results);
+    setLastResults(EXAMPLE_DATA.results);
+    setSynthesis(EXAMPLE_DATA.synthesis);
+    setSteelMan(EXAMPLE_DATA.steelMan);
+    setRewrite(EXAMPLE_DATA.rewrite);
+    setActiveTab("feedback");
+    
+    // Select the example personas
+    const exampleIds = Object.keys(EXAMPLE_DATA.results);
+    setSelectedIds(exampleIds);
+    
+    handleDismissWelcome();
+  };
 
   const abortRef = useRef(null);
 
@@ -204,6 +236,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--s0)", color: "var(--t1)", fontFamily: "var(--mono)", padding: 24, boxSizing: "border-box", "--s0": "#0B0B0F", "--s1": "#14141A", "--s2": "#1C1C24", "--bdr": "#2A2A35", "--t1": "#E4E4EC", "--t2": "#7A7A8C", "--accent": "#E84855", "--heading": "'Space Grotesk', sans-serif", "--mono": "'DM Mono', monospace" }}>
+      {showWelcome && <WelcomeModal onSkip={handleDismissWelcome} onLoadExample={loadExampleData} />}
       <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
       <div style={{ maxWidth: 940, margin: "0 auto" }}>
 
