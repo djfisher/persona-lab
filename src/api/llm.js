@@ -4,8 +4,8 @@ const GEMINI_KEY = 'AIzaSyB6vchHuJBAZ6yF7-ONnYgGZCLMPwjDBfA'; // User should fil
 export const MODELS = [
   { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic", thinking: true },
   { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5", provider: "anthropic", thinking: false },
-  { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro", provider: "google", thinking: true },
-  { id: "gemini-3.0-flash-preview", name: "Gemini 3.0 Flash", provider: "google", thinking: false },
+  { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "google", thinking: false },
+  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "google", thinking: false },
 ];
 
 export async function callAPI({ modelId, system, userMessage, maxTokens = 4096, thinking = false, signal }, retries = 3) {
