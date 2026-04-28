@@ -12,8 +12,8 @@ export const WelcomeModal = ({ onSkip, onLoadExample }) => {
         </h2>
         
         <p style={{ fontSize: 14, color: "var(--t2)", fontFamily: "var(--mono)", lineHeight: 1.6, textAlign: "center", marginBottom: 32 }}>
-          Stop guessing what users want. Describe your product, select adversarial personas, and generate instant, brutal feedback. 
-          The app will then automatically synthesize the results using the <strong>Jobs-to-be-Done (JTBD)</strong> framework.
+          Stop guessing what users want. Describe your product, select adversarial personas, and generate brutal, actionable feedback. 
+          The app doesn't just review your product—it automatically synthesizes the results using the <strong>Jobs-to-be-Done (JTBD)</strong> framework to find your friction points, unearth market gaps, and rewrite your pitch to achieve true <strong>Product-Market Fit</strong>.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
