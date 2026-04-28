@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { downloadFeedbackPDF } from "./FeedbackPDF";
 import { usePersonas } from "./personas/usePersonas";
 import { buildSystemPrompt, JTBD_PROMPT, REWRITE_PROMPT, STEELMAN_PROMPT, PERSONA_GEN_PROMPT } from "./prompts/index.js";
-import { MethodologyPanel, FeedbackPanel, SteelManPanel, JTBDPanel, RewritePanel, PersonaEditor } from "./components/panels/index.jsx";
+import { MethodologyPanel, FeedbackPanel, SteelManPanel, JTBDPanel, RewritePanel, PersonaEditor, SettingsPanel } from "./components/panels/index.jsx";
 
 import { callAPI, extractJSON, MODELS } from "./api/llm.js";
 import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
@@ -224,12 +224,14 @@ export default function App() {
               </select>
               <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--t2)", fontSize: 10 }}>▼</div>
             </div>
+            <button onClick={() => setView("settings")} style={{ padding: "8px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", cursor: "pointer", fontSize: 14 }}>⚙️</button>
             <button onClick={() => setView("generate")} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer" }}>⚡ Auto-Generate</button>
             <button onClick={() => setView("create")} style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer" }}>+ Manual Create</button>
           </div>
         </div>
 
         {/* ─── Editor Views ─── */}
+        {view === "settings" && <SettingsPanel onClose={() => setView("research")} />}
         {view === "customize" && editPersona && <PersonaEditor persona={editPersona} setPersona={setEditPersona} onSave={save} title="Edit Persona" onCancel={() => setView("research")} />}
         {view === "create" && <PersonaEditor persona={newPersona} setPersona={setNewPersona} onSave={create} title="Create Persona" onCancel={() => setView("research")} />}
         {view === "generate" && (

@@ -1,11 +1,15 @@
-const ANTHROPIC_KEY = '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';
-const GEMINI_KEY = 'AIzaSyB6vchHuJBAZ6yF7-ONnYgGZCLMPwjDBfA'; // User should fill this or we can use an env var
+export function getAPIKeys() {
+  return {
+    anthropic: localStorage.getItem('persona-lab-anthropic-key') || '',
+    gemini: localStorage.getItem('persona-lab-gemini-key') || ''
+  };
+}
 
 export const MODELS = [
   { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "anthropic", thinking: true },
   { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5", provider: "anthropic", thinking: false },
-  { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash", provider: "google", thinking: false },
-  { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro", provider: "google", thinking: false },
+  { id: "gemini-3.1-pro-preview", name: "Gemini 3.1 Pro", provider: "google", thinking: true },
+  { id: "gemini-3.0-flash-preview", name: "Gemini 3.0 Flash", provider: "google", thinking: false },
 ];
 
 export async function callAPI({ modelId, system, userMessage, maxTokens = 4096, thinking = false, signal }, retries = 3) {
@@ -20,6 +24,9 @@ export async function callAPI({ modelId, system, userMessage, maxTokens = 4096, 
 }
 
 async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries) {
+  const { anthropic: ANTHROPIC_KEY } = getAPIKeys();
+  if (!ANTHROPIC_KEY) throw new Error("Missing Anthropic API Key. Please add it in Settings.");
+
   const body = {
     model: modelId,
     max_tokens: maxTokens,
@@ -64,6 +71,9 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
 }
 
 async function callGemini({ modelId, system, userMessage, maxTokens, signal }, retries) {
+  const { gemini: GEMINI_KEY } = getAPIKeys();
+  if (!GEMINI_KEY) throw new Error("Missing Gemini API Key. Please add it in Settings.");
+
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_KEY}`;
   
   const body = {
