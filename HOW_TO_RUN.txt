@@ -1,0 +1,25 @@
+Welcome to the Persona Research Lab!
+
+If you are not familiar with the command line or programming, don't worry. Follow these simple steps to start the application:
+
+STEP 1: INSTALL NODE.JS (If you don't have it already)
+Before running the app, your computer needs a standard program called Node.js.
+1. Go to https://nodejs.org/
+2. Download and install the "LTS" (Long Term Support) version for your computer.
+3. Follow the installation wizard and leave all default settings.
+
+STEP 2: RUN THE APPLICATION
+We have created simple clickable files to start the app for you.
+
+For Mac Users:
+1. Double-click the file named "start-mac.command" in this folder.
+2. A terminal window will open automatically, install what it needs, and open the app in your web browser.
+(Note: If your Mac says the file can't be opened because it's from an unidentified developer, Right-Click or Control-Click the file, select "Open" from the menu, and then click "Open" on the warning prompt).
+
+For Windows Users:
+1. Double-click the file named "start-windows.bat" in this folder.
+2. A black command window will open, install what it needs, and automatically open the app in your web browser.
+
+IMPORTANT NOTES:
+- You must keep the black text window open while you use the app. When you are done using the app, you can just close that window to shut it down.
+- If the browser doesn't open automatically for some reason, look at the text window. It will say something like "Local: http://localhost:5173/". Type that exact web address into your browser (Chrome, Edge, Safari, etc.) to view the app.
