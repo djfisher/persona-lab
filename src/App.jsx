@@ -220,7 +220,11 @@ export default function App() {
                 onChange={e => setSelectedModelId(e.target.value)}
                 style={{ padding: "8px 32px 8px 12px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", appearance: "none" }}
               >
-                {MODELS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {MODELS.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}{m.freeTier ? " (Free Tier)" : ""}
+                  </option>
+                ))}
               </select>
               <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "var(--t2)", fontSize: 10 }}>▼</div>
             </div>
