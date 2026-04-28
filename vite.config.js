@@ -40,6 +40,7 @@ export default defineConfig({
     })
   ],
   build: {
+    chunkSizeWarningLimit: 1500, // Increase warning limit to 1.5MB to accommodate pdf-vendor
     rollupOptions: {
       output: {
         manualChunks(id) {
