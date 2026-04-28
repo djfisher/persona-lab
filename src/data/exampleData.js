@@ -1,74 +1,77 @@
 export const EXAMPLE_DATA = {
-  productName: "Toast-OS Smart Toaster",
-  productDesc: "A $250 connected toaster with a 5-inch touchscreen. It connects to Wi-Fi, downloads weather updates, and allows users to swipe through different bread profiles. It sends a push notification to your phone when the toast is done.",
-  competitors: ["Breville", "Standard $20 Toaster"],
+  productName: "ErgoLumina Desk Lamp",
+  productDesc: "A $129 desk lamp designed specifically for knowledge workers. It uses a built-in ambient light sensor to automatically adjust brightness and color temperature throughout the day to match your circadian rhythm and reduce screen glare.",
+  competitors: ["BenQ ScreenBar", "Standard LED Lamp"],
   results: {
     "skeptical-dev": {
-      ratings: { overall: 2, value: 1, usability: 4, reliability: 3, wouldRecommend: 1 },
-      headline: "A solution desperately searching for a problem.",
-      review: "I cannot overstate how ridiculous it is to put a Wi-Fi chip in a toaster. It takes 15 seconds of booting up before I can even select the 'toast' function. What happens when the company goes out of business and the auth servers go down? Do I just eat raw bread? It's a massive security vulnerability for my home network just to get a push notification that I could have figured out by smelling the bread.",
-      dealbreakers: ["Requires Wi-Fi to function properly", "Boot time takes longer than standard toasting", "Absurd price point for a single-function appliance"],
-      competitorMention: "I will stick to my $20 Hamilton Beach that uses physical coils and thermodynamics instead of a software stack.",
-      buyProbability: 5,
-      buyParams: { val: 1, usa: 4, pri: 8, ske: 10 },
-      wishlist: ["A physical lever that works without electricity", "Local-only mode with no cloud dependency"],
-      unsolvedPainPoints: ["Bread gets stuck and requires a knife to extract", "Crumb trays are universally terrible to clean"]
+      ratings: { overall: 8, value: 7, usability: 6, reliability: 9, wouldRecommend: 8 },
+      headline: "Genuinely saves my eyes, but the software is annoying.",
+      review: "I fully expected this to be a gimmick, but the ambient light sensing actually works flawlessly. It drastically reduced my eye fatigue during late-night coding sessions, and the color temperature transitions are buttery smooth. However, the requirement to create a cloud account just to adjust the default brightness curve is incredibly frustrating for a desk lamp. Hardware shouldn't require an email address.",
+      dealbreakers: ["Mandatory cloud account for basic configuration", "Uses a proprietary power brick instead of USB-C"],
+      competitorMention: "It's better than the BenQ ScreenBar because of the auto-adjusting, but BenQ doesn't force me to make an account.",
+      buyProbability: 85,
+      buyParams: { val: 8, usa: 6, pri: 6, ske: 8 },
+      wishlist: ["A local-only web interface or Bluetooth config", "Standard USB-C power delivery"],
+      unsolvedPainPoints: ["I still have to reach over to physically turn it off if I leave my desk"]
     },
     "budget-buyer": {
-      ratings: { overall: 3, value: 1, usability: 6, reliability: 5, wouldRecommend: 2 },
-      headline: "Who on earth has $250 for this?",
-      review: "The screen is pretty, I'll admit that. But I can buy groceries for a month for the price of this toaster. The weather app feature is silly—I have a phone in my pocket. If this was $50, maybe it would be a fun novelty gift, but at this price, it's strictly for rich people who want to show off their kitchen.",
-      dealbreakers: ["The price is completely unjustifiable", "Push notifications for toast is overkill"],
-      competitorMention: "Breville makes premium toasters that actually toast bread better for half the price without the gimmicks.",
-      buyProbability: 10,
-      buyParams: { val: 2, usa: 6, pri: 10, ske: 7 },
-      wishlist: ["A base model without the screen for $40", "Better warranty given the electronics involved"],
-      unsolvedPainPoints: ["Toasters break after 2 years and go to landfills"]
+      ratings: { overall: 7, value: 5, usability: 8, reliability: 8, wouldRecommend: 6 },
+      headline: "A premium luxury, but hard to justify the price out of pocket.",
+      review: "The build quality is fantastic—heavy aluminum base, sleek design. The auto-dimming is really nice and definitely makes my workspace feel more premium. However, at $129, you are paying a massive premium. You can get 80% of the way there with a $20 IKEA lamp and a $15 smart bulb. It's a fantastic product if your company is paying for your WFH setup, but a tough sell for a student.",
+      dealbreakers: ["The price is too high for a personal purchase", "The heavy base takes up valuable desk space"],
+      competitorMention: "I could buy 5 standard LED lamps for this price, though they wouldn't have the auto-adjust feature.",
+      buyProbability: 40,
+      buyParams: { val: 7, usa: 8, pri: 9, ske: 6 },
+      wishlist: ["A cheaper 'Lite' version without the aluminum body", "A clamp-on monitor mount to save desk space"],
+      unsolvedPainPoints: ["Desk space is limited and this base is huge"]
     }
   },
   synthesis: {
-    executiveSummary: "The product is perceived as an over-engineered luxury novelty rather than a functional upgrade. Users are actively hostile toward the digitization of a reliable, low-tech appliance.",
+    executiveSummary: "ErgoLumina is a highly effective product that successfully solves eye strain and feels premium. However, its adoption is hindered by unnecessary software gating (cloud accounts) and a base design that consumes desk space.",
     forces: {
-      push: "Current toasters are boring and sometimes burn bread.",
-      pull: "The aesthetic appeal of a modern, screen-enabled kitchen appliance.",
-      anxiety: "Fear of software updates bricking the toaster, security vulnerabilities, and absurd price.",
-      habit: "Pushing a mechanical lever down is deeply ingrained muscle memory."
+      push: "Severe eye strain and headaches from long hours looking at bright monitors in dark rooms.",
+      pull: "Automatic, thought-free lighting adjustments that genuinely improve comfort and focus.",
+      anxiety: "Having to rely on a cloud server to use a desk lamp, and the high upfront financial cost.",
+      habit: "People are used to simply flipping a switch on a cheap desk lamp."
     },
     frictionPoints: [
-      { conflict: "Rich features vs. Immediate Action", personas: ["Skeptical Dev", "Budget Buyer"], tradeoff: "Remove boot sequences; toasting must start the millisecond the bread is inserted." }
+      { conflict: "Advanced Features vs. Privacy/Simplicity", personas: ["Skeptical Dev"], tradeoff: "Provide a 'local-only' Bluetooth mode out of the box." },
+      { conflict: "Premium Build vs. Desk Space", personas: ["Budget Buyer"], tradeoff: "Offer a clamp-style mount option instead of just the heavy base." }
     ],
-    switchingCost: { score: 8, reason: "Financial cost is extremely high, and mental cost of learning a 'toast OS' is frustrating." },
+    switchingCost: { score: 4, reason: "Easy to physically replace an old lamp, but the financial cost is a barrier." },
     jobs: [
-      { id: "j1", statement: "When I wake up groggy, I want to make breakfast without thinking, so I can eat and get to work.", dimension: "functional", sharedAcross: ["All"], currentlyAddressed: "not_at_all", evidence: "Complaints about boot times and screens.", priority: "critical" }
+      { id: "j1", statement: "When I am working late into the night, I want my lighting to automatically adjust, so I can avoid eye fatigue and sleep better afterwards.", dimension: "functional", sharedAcross: ["Skeptical Dev", "Budget Buyer"], currentlyAddressed: "partially", evidence: "Both personas praised the core auto-dimming functionality.", priority: "critical" }
     ],
     productOptions: [
-      { title: "Pivot to B2B Commercial", description: "Sell this to hotels where central management of toaster arrays makes sense.", effort: "medium", impact: "high", riskIfIgnored: "Total consumer market failure" },
-      { title: "Dumb Mode Default", description: "Add a physical lever that bypasses the OS entirely.", effort: "low", impact: "high", riskIfIgnored: "Alienates 90% of buyers" }
+      { title: "Remove Cloud Requirement", description: "Allow local configuration without an account.", effort: "low", impact: "high", riskIfIgnored: "Alienates the core power-user demographic" },
+      { title: "Monitor Mount Accessory", description: "Create a clamp that attaches to the back of a desk or monitor to save space.", effort: "medium", impact: "high", riskIfIgnored: "Loses market share to BenQ ScreenBar" }
     ]
   },
   steelMan: {
-    verdict: "This business fails because it violates the core user expectation of a utility appliance: immediate, mindless reliability.",
+    verdict: "The product is fundamentally sound and solves a real problem, but could stall if the friction of onboarding (accounts/power cables) outweighs the core utility.",
     failureScenarios: [
-      { title: "The 'Smart' Backlash", probability: "high", description: "Consumers are increasingly fatigued by 'smart' appliances. The product becomes a viral joke on social media as an example of tech excess.", evidence: "Skeptical Dev's entire review." },
-      { title: "Hardware-Software Desync", probability: "medium", description: "The heat from the toasting elements degrades the touchscreen LCD over 14 months, leading to massive warranty claims.", evidence: "General skepticism about reliability." }
+      { title: "Commoditization", probability: "medium", description: "Cheaper overseas brands replicate the light-sensing algorithm and release a $40 alternative.", evidence: "Budget buyer noting it's easy to approximate with cheap smart bulbs." },
+      { title: "Power User Rejection", probability: "medium", description: "Tech influencers review the product negatively specifically because of the cloud-gated settings and proprietary power cable.", evidence: "Skeptical Dev's major dealbreakers." }
     ],
-    fatalAssumption: "Assuming that because screens make phones better, they make *everything* better.",
-    survivalCondition: "The toaster must toast bread significantly better (perfectly even browning via ML sensors) than a $20 competitor to justify the electronics."
+    fatalAssumption: "Assuming users are willing to make an account and use a proprietary app for a desk appliance.",
+    survivalCondition: "Must transition to standard USB-C power and remove the account requirement to secure the 'power user' market."
   },
   rewrite: {
-    tagline: "The world's first precision-browning toaster. No burnt edges, ever.",
-    elevatorPitch: "We stripped away the gimmicks. Using thermal sensors and a simple digital interface, the Toast-OS guarantees perfectly even browning on any bread type. It's not a smart toaster; it's a perfect toaster.",
-    targetCustomer: "Kitchen enthusiasts and tech-forward homeowners who value perfect execution over novelty features.",
+    tagline: "The desk lamp that protects your eyes, automatically.",
+    elevatorPitch: "ErgoLumina uses built-in ambient sensors to match your natural circadian rhythm, reducing eye strain and screen glare without you having to lift a finger. Now featuring a local-only setup mode and a desk-saving clamp mount, it's the ultimate lighting upgrade for your workspace.",
+    targetCustomer: "Remote workers, software developers, and professionals who spend 8+ hours a day in front of a screen.",
     keyImprovements: [
-      { title: "Remove the Weather App", rationale: "It's a distraction that cheapens the brand.", addressesPersonas: ["Budget Buyer"] },
-      { title: "Instant-On", rationale: "Toasting must begin without a boot sequence.", addressesPersonas: ["Skeptical Dev"] }
+      { title: "Local-Only Configuration", rationale: "Power users despise mandatory accounts for hardware.", addressesPersonas: ["Skeptical Dev"] },
+      { title: "Clamp Mount Option", rationale: "Users want to save desk space.", addressesPersonas: ["Budget Buyer"] },
+      { title: "USB-C Power", rationale: "Proprietary cables are annoying and reduce desk flexibility.", addressesPersonas: ["Skeptical Dev"] }
     ],
     featuresToAdd: [
-      { feature: "Thermal perfection sensors", source: "Market Gap", priority: "critical" }
+      { feature: "Motion sensor auto-off", source: "Skeptical Dev Unsolved Pain Point", priority: "medium" }
     ],
     featuresToCut: [
-      { feature: "Wi-Fi push notifications", reason: "Unnecessary complexity and security risk." }
+      { feature: "Mandatory Cloud Sync", reason: "Unnecessary complexity and privacy concern." }
     ],
-    positioningStatement: "Unlike Breville, which relies on timers, we use real-time thermal imaging to guarantee your toast is exactly the shade you asked for."
+    positioningStatement: "Unlike standard LED lamps or the BenQ ScreenBar, ErgoLumina dynamically reacts to your environment to guarantee perfect lighting all day, with zero app bloat or cloud reliance.",
+    pricingGuidance: "Maintain the $129 price point for the premium base model, but introduce a 'WFH Bundle' that targets employers to subsidize the cost, addressing the Budget Buyer's financial friction."
   }
 };
