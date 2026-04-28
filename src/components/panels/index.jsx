@@ -5,3 +5,4 @@ export { JTBDPanel } from './JTBDPanel';
 export { RewritePanel } from './RewritePanel';
 export { PersonaEditor } from './PersonaEditor';
 export { SettingsPanel } from './SettingsPanel';
+export { WelcomeModal } from './WelcomeModal';
