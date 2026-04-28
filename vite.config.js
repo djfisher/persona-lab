@@ -14,8 +14,8 @@ export default defineConfig({
         compact: true,
         controlFlowFlattening: false, // Disabling this massively speeds up builds
         deadCodeInjection: false,     // Disabling this massively speeds up builds
-        debugProtection: true,
-        debugProtectionInterval: 4000,
+        debugProtection: false,       // Disabling this prevents infinite spinning/freezing in React
+        debugProtectionInterval: 0,
         disableConsoleOutput: false,
         identifierNamesGenerator: 'hexadecimal',
         log: false,
@@ -30,7 +30,7 @@ export default defineConfig({
         stringArrayRotate: true,
         stringArrayShuffle: true,
         stringArrayWrappersCount: 1,
-        stringArrayWrappersChainedCalls: true,
+        stringArrayWrappersChainedCalls: false, // Disabling this prevents infinite loops in React
         stringArrayWrappersParametersMaxCount: 2,
         stringArrayWrappersType: 'variable',
         stringArrayThreshold: 0.8,
@@ -39,6 +39,23 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@react-pdf')) {
+              return 'pdf-vendor';
+            }
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'react-vendor';
+            }
+            return 'vendor'; // all other node_modules
+          }
+        }
+      }
+    }
+  },
   test: {
     globals: true,
     environment: 'jsdom',
