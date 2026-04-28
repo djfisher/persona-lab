@@ -29,24 +29,31 @@ export const SettingsPanel = ({ onClose }) => {
           Your keys are stored locally in your browser and are never sent to our servers. They are sent directly to Anthropic or Google when generating persona feedback.
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: "var(--t1)", fontFamily: "var(--mono)", marginBottom: 6, fontWeight: 600 }}>Anthropic API Key (Claude)</div>
-          <input 
-            type="password"
-            placeholder="sk-ant-..." 
-            value={anthropicKey} 
-            onChange={e => setAnthropicKey(e.target.value)} 
-            style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 13, boxSizing: "border-box" }} 
-          />
-        </div>
-
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, color: "var(--t1)", fontFamily: "var(--mono)", marginBottom: 6, fontWeight: 600 }}>Google Gemini API Key</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--t1)", fontFamily: "var(--mono)", fontWeight: 600 }}>Google Gemini API Key</div>
+            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#2EC4B6", fontFamily: "var(--mono)", textDecoration: "none" }}>Get a FREE key here ↗</a>
+          </div>
           <input 
             type="password"
             placeholder="AIzaSy..." 
             value={geminiKey} 
             onChange={e => setGeminiKey(e.target.value)} 
+            style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 13, boxSizing: "border-box" }} 
+          />
+          <div style={{ fontSize: 10, color: "var(--t2)", fontFamily: "var(--mono)", marginTop: 6 }}>Gemini models have a generous Free Tier. You can use them at no cost.</div>
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: "var(--t1)", fontFamily: "var(--mono)", fontWeight: 600 }}>Anthropic API Key (Claude)</div>
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#F9A03F", fontFamily: "var(--mono)", textDecoration: "none" }}>Requires paid account ↗</a>
+          </div>
+          <input 
+            type="password"
+            placeholder="sk-ant-..." 
+            value={anthropicKey} 
+            onChange={e => setAnthropicKey(e.target.value)} 
             style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 13, boxSizing: "border-box" }} 
           />
         </div>
