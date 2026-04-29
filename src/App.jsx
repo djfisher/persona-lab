@@ -243,7 +243,7 @@ export default function App() {
         {/* ─── Header ─── */}
         <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 32, borderRadius: 2, background: "linear-gradient(180deg, #E84855, #F9A03F)" }} /><h1 style={{ fontFamily: "var(--heading)", fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>Persona Research Lab</h1></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div style={{ width: 8, height: 32, borderRadius: 2, background: "linear-gradient(180deg, #E84855, #F9A03F)" }} /><h1 style={{ fontFamily: "var(--heading)", fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5, color: "var(--t1)" }}>Persona Research Lab</h1></div>
             <div style={{ fontSize: 12, color: "var(--t2)", marginTop: 4, marginLeft: 18 }}>Parallel feedback → JTBD + Four Forces → Pre-mortem → Decisions</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
