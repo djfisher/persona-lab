@@ -22,23 +22,30 @@ export function useProducts(userId) {
 
   const ensureProduct = useCallback(async ({ name, description }) => {
     if (!userId) return null;
-    if (selectedProduct) {
+
+    const base = selectedProduct
+      ?? products.find(p => p.name.trim().toLowerCase() === name.trim().toLowerCase())
+      ?? null;
+
+    if (base) {
       const changed =
-        selectedProduct.name !== name ||
-        (selectedProduct.description || "") !== (description || "");
+        base.name !== name ||
+        (base.description || "") !== (description || "");
       if (changed) {
-        const updated = await updateProduct(selectedProduct.id, { name, description });
+        const updated = await updateProduct(base.id, { name, description });
         setSelectedProduct(updated);
         setProducts(prev => prev.map(p => p.id === updated.id ? updated : p));
         return updated;
       }
-      return selectedProduct;
+      setSelectedProduct(base);
+      return base;
     }
+
     const created = await createProduct({ name, description });
     setSelectedProduct(created);
     setProducts(prev => [created, ...prev]);
     return created;
-  }, [userId, selectedProduct, createProduct, updateProduct]);
+  }, [userId, selectedProduct, products, createProduct, updateProduct]);
 
   return { products, selectedProduct, selectProduct, ensureProduct, loading };
 }

@@ -401,13 +401,14 @@ export default function App() {
             )}
 
             {/* Tabs */}
-            {(rc > 0 || Object.keys(personaErrors).length > 0) && (
+            {(rc > 0 || Object.keys(personaErrors).length > 0 || (selectedProduct && runs.length > 0)) && (
               <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
                 <TabBtn active={activeTab === "feedback"} onClick={() => setActiveTab("feedback")} badge={rc}>Feedback</TabBtn>
                 {rc > 1 && <TabBtn active={activeTab === "comparison"} onClick={() => setActiveTab("comparison")}>Compare</TabBtn>}
                 <TabBtn active={activeTab === "jtbd"} onClick={() => setActiveTab("jtbd")} badge={synthesis ? "✓" : null}>JTBD + Forces</TabBtn>
                 <TabBtn active={activeTab === "steelman"} onClick={() => setActiveTab("steelman")} badge={steelMan ? "💀" : null}>Pre-Mortem</TabBtn>
                 <TabBtn active={activeTab === "rewrite"} onClick={() => setActiveTab("rewrite")} badge={rewrite ? "✨" : null}>Rewrite</TabBtn>
+                {selectedProduct && runs.length > 0 && <TabBtn active={activeTab === "history"} onClick={() => setActiveTab("history")} badge={runs.length}>History</TabBtn>}
                 {rc >= 2 && !steelMan && !steelManning && <button onClick={() => runSteelMan(results)} style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid #E8485555", background: "#E8485515", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>💀 Tell Me Why I'm Wrong</button>}
                 <button onClick={handleDownloadPDF} disabled={downloading} style={{ marginLeft: rc >= 2 && !steelMan && !steelManning ? 0 : "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: downloading ? "var(--s2)" : "var(--s1)", color: downloading ? "var(--t2)" : "var(--t1)", fontFamily: "var(--mono)", fontSize: 11, cursor: downloading ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>{downloading ? "Generating..." : "↓ Download PDF"}</button>
               </div>
@@ -477,8 +478,14 @@ export default function App() {
               </>
             )}
 
-            {/* History Strip */}
-            {selectedProduct && <HistoryStrip runs={runs} onLoad={handleLoadRun} />}
+            {/* History Tab */}
+            {activeTab === "history" && selectedProduct && (
+              <Card>
+                <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 15, color: "var(--t1)", marginBottom: 4 }}>{selectedProduct.name}</div>
+                <div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{runs.length} run{runs.length !== 1 ? "s" : ""}</div>
+                <HistoryStrip runs={runs} onLoad={run => { handleLoadRun(run); setActiveTab("feedback"); }} />
+              </Card>
+            )}
           </>
         )}
       </div>

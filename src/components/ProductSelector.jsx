@@ -4,7 +4,7 @@ export const ProductSelector = ({ products, selectedProduct, onSelect }) => {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--bdr)" }}>
       <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "var(--t2)", fontFamily: "var(--mono)", fontWeight: 700, whiteSpace: "nowrap" }}>
-        Load
+        Previous Product
       </div>
       <div style={{ position: "relative", flex: 1 }}>
         <select

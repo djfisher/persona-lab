@@ -28,10 +28,7 @@ export const HistoryStrip = ({ runs, onLoad }) => {
   if (!runs.length) return null;
 
   return (
-    <div style={{ marginTop: 24 }}>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: 1.5, color: "var(--t2)", fontFamily: "var(--mono)", fontWeight: 700, marginBottom: 10 }}>
-        Run History
-      </div>
+    <div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {runs.map((run, i) => {
           const buy = avgBuy(run);
