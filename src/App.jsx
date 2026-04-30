@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { downloadFeedbackPDF } from "./FeedbackPDF";
 import { usePersonas } from "./personas/usePersonas";
 import { buildSystemPrompt, JTBD_PROMPT, REWRITE_PROMPT, STEELMAN_PROMPT, PERSONA_GEN_PROMPT } from "./prompts/index.js";
@@ -9,6 +9,10 @@ import { callAPI, extractJSON, MODELS } from "./api/llm.js";
 import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import { useHistory } from "./hooks/useHistory.js";
+import { useProducts } from "./hooks/useProducts.js";
+import { useRunHistory } from "./hooks/useRunHistory.js";
+import { ProductSelector } from "./components/ProductSelector.jsx";
+import { HistoryStrip } from "./components/HistoryStrip.jsx";
 
 const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 5: "Ruthless" };
 
@@ -18,7 +22,9 @@ const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 
 export default function App() {
   const { personas, addPersona, updatePersona } = usePersonas();
   const { user, authReady } = useAuth();
-  const { getProducts, createProduct, updateProduct, saveRun, updateRun, getProductRuns } = useHistory(user?.id);
+  const { saveRun } = useHistory(user?.id);
+  const { products, selectedProduct, selectProduct, ensureProduct } = useProducts(user?.id);
+  const { runs, refreshRuns } = useRunHistory(user?.id, selectedProduct?.id);
   const [selectedIds, setSelectedIds] = useState(() => personas.map(p => p.id));
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
   const [productName, setProductName] = useState("");
@@ -124,7 +130,9 @@ export default function App() {
         return p ? `${p.name}: ${r.headline}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nBuy%: ${r.buyProbability}%\nCompetitor: ${r.competitorMention}` : "";
       }).filter(Boolean).join("\n---\n");
       const text = await callAPI({ modelId: selectedModelId, system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, maxTokens: 1500, signal });
-      setSteelMan(extractJSON(text)); setActiveTab("steelman");
+      const steelManData = extractJSON(text);
+      setSteelMan(steelManData); setActiveTab("steelman");
+      return steelManData;
     } catch (err) {
       if (err.name === "AbortError") throw err;
       setGlobalError({ title: "Pre-Mortem Failed", message: err.message, detail: err.message, retryable: true });
@@ -160,7 +168,9 @@ export default function App() {
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
       const guidanceSection = guidance.trim() ? `\n\nADDITIONAL DIRECTION: ${guidance.trim()}` : "";
       const text = await callAPI({ modelId: selectedModelId, system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}${guidanceSection}\n\nRewrite the product offering based on all of this.`, maxTokens: 3000, signal });
-      setRewrite(extractJSON(text)); setActiveTab("rewrite");
+      const rewriteData = extractJSON(text);
+      setRewrite(rewriteData); setActiveTab("rewrite");
+      return rewriteData;
     } catch (err) {
       if (err.name === "AbortError") throw err;
       setGlobalError({ title: "Product Rewrite Failed", message: err.message, detail: err.message, retryable: true });
@@ -210,8 +220,30 @@ export default function App() {
       // Auto-run synthesis, pre-mortem, and rewrite if 2+ results
       if (Object.keys(allResults).length >= 2) {
         const synthesisData = await runSynthesis(allResults, signal);
-        await runSteelMan(allResults, signal);
-        await runRewrite(allResults, synthesisData, signal);
+        const steelManResult = await runSteelMan(allResults, signal);
+        const rewriteResult = await runRewrite(allResults, synthesisData, signal);
+
+        if (!signal.aborted && user) {
+          try {
+            const product = await ensureProduct({ name: productName, description: productDesc });
+            if (product) {
+              await saveRun({
+                productId: product.id,
+                cynicism,
+                modelId: selectedModelId,
+                competitors: comps,
+                selectedPersonaIds: selectedIds,
+                results: allResults,
+                synthesis: synthesisData ?? null,
+                steelman: steelManResult ?? null,
+                rewrite: rewriteResult ?? null,
+              });
+              refreshRuns();
+            }
+          } catch (err) {
+            console.error("Failed to save run:", err);
+          }
+        }
       }
     } catch (err) {
       if (err.name !== "AbortError") setGlobalError({ title: "Research Failed", message: err.message, retryable: true });
@@ -230,6 +262,20 @@ export default function App() {
     } catch (err) { setPersonaErrors(prev => ({ ...prev, [persona.id]: err.message })); }
     finally { setLoading(prev => ({ ...prev, [persona.id]: false })); }
   };
+
+  const handleLoadRun = useCallback((run) => {
+    const loadedResults = {};
+    (run.persona_results || []).forEach(pr => { loadedResults[pr.persona_id] = pr.result; });
+    setResults(loadedResults);
+    setLastResults(loadedResults);
+    setSynthesis(run.synthesis ?? null);
+    setSteelMan(run.steelman ?? null);
+    setRewrite(run.rewrite ?? null);
+    setCynicism(run.cynicism ?? 3);
+    if (run.model_id) setSelectedModelId(run.model_id);
+    setActiveTab("feedback");
+    setPersonaErrors({});
+  }, []);
 
   const save = () => { if (editPersona) { updatePersona(editPersona); setEditPersona(null); } setView("research"); };
   const create = () => { const id = addPersona({ ...newPersona, id: `c-${Date.now()}`, petPeeves: newPersona.petPeeves.filter(x => x.trim()) }); setSelectedIds(p => [...p, id]); setNewPersona({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } }); setView("research"); };
@@ -305,6 +351,15 @@ export default function App() {
 
             {/* Product Input */}
             <Card style={{ marginBottom: 20 }}>
+              <ProductSelector
+                products={products}
+                selectedProduct={selectedProduct}
+                onSelect={p => {
+                  selectProduct(p);
+                  if (p) { setProductName(p.name); setProductDesc(p.description || ""); }
+                  else { setProductName(""); setProductDesc(""); }
+                }}
+              />
               <input placeholder="Product name" value={productName} onChange={e => setProductName(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--heading)", fontWeight: 600, fontSize: 16, boxSizing: "border-box", marginBottom: 10 }} />
               <textarea placeholder="Description, pricing, target audience..." value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={3} style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
 
@@ -346,13 +401,14 @@ export default function App() {
             )}
 
             {/* Tabs */}
-            {(rc > 0 || Object.keys(personaErrors).length > 0) && (
+            {(rc > 0 || Object.keys(personaErrors).length > 0 || (selectedProduct && runs.length > 0)) && (
               <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
                 <TabBtn active={activeTab === "feedback"} onClick={() => setActiveTab("feedback")} badge={rc}>Feedback</TabBtn>
                 {rc > 1 && <TabBtn active={activeTab === "comparison"} onClick={() => setActiveTab("comparison")}>Compare</TabBtn>}
                 <TabBtn active={activeTab === "jtbd"} onClick={() => setActiveTab("jtbd")} badge={synthesis ? "✓" : null}>JTBD + Forces</TabBtn>
                 <TabBtn active={activeTab === "steelman"} onClick={() => setActiveTab("steelman")} badge={steelMan ? "💀" : null}>Pre-Mortem</TabBtn>
                 <TabBtn active={activeTab === "rewrite"} onClick={() => setActiveTab("rewrite")} badge={rewrite ? "✨" : null}>Rewrite</TabBtn>
+                {selectedProduct && runs.length > 0 && <TabBtn active={activeTab === "history"} onClick={() => setActiveTab("history")} badge={runs.length}>History</TabBtn>}
                 {rc >= 2 && !steelMan && !steelManning && <button onClick={() => runSteelMan(results)} style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid #E8485555", background: "#E8485515", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>💀 Tell Me Why I'm Wrong</button>}
                 <button onClick={handleDownloadPDF} disabled={downloading} style={{ marginLeft: rc >= 2 && !steelMan && !steelManning ? 0 : "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: downloading ? "var(--s2)" : "var(--s1)", color: downloading ? "var(--t2)" : "var(--t1)", fontFamily: "var(--mono)", fontSize: 11, cursor: downloading ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>{downloading ? "Generating..." : "↓ Download PDF"}</button>
               </div>
@@ -420,6 +476,15 @@ export default function App() {
                   </Card>
                 )}
               </>
+            )}
+
+            {/* History Tab */}
+            {activeTab === "history" && selectedProduct && (
+              <Card>
+                <div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 15, color: "var(--t1)", marginBottom: 4 }}>{selectedProduct.name}</div>
+                <div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{runs.length} run{runs.length !== 1 ? "s" : ""}</div>
+                <HistoryStrip runs={runs} onLoad={run => { handleLoadRun(run); setActiveTab("feedback"); }} />
+              </Card>
             )}
           </>
         )}

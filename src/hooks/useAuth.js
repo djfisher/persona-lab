@@ -13,11 +13,15 @@ export function useAuth() {
         setUser(session.user);
         setAuthReady(true);
       } else {
-        supabase.auth.signInAnonymously().then(({ data: { user } }) => {
-          setUser(user ?? null);
+        supabase.auth.signInAnonymously().then(({ data, error }) => {
+          if (error) console.error("[useAuth] signInAnonymously failed:", error.message);
+          setUser(data?.user ?? null);
           setAuthReady(true);
         });
       }
+    }).catch(err => {
+      console.error("[useAuth] getSession failed:", err);
+      setAuthReady(true);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
