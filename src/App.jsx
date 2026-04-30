@@ -9,6 +9,8 @@ import { callAPI, extractJSON, MODELS } from "./api/llm.js";
 import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import { useHistory } from "./hooks/useHistory.js";
+import { useProducts } from "./hooks/useProducts.js";
+import { ProductSelector } from "./components/ProductSelector.jsx";
 
 const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 5: "Ruthless" };
 
@@ -18,7 +20,8 @@ const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 
 export default function App() {
   const { personas, addPersona, updatePersona } = usePersonas();
   const { user, authReady } = useAuth();
-  const { getProducts, createProduct, updateProduct, saveRun, updateRun, getProductRuns } = useHistory(user?.id);
+  const { saveRun, getProductRuns } = useHistory(user?.id);
+  const { products, selectedProduct, selectProduct, ensureProduct } = useProducts(user?.id);
   const [selectedIds, setSelectedIds] = useState(() => personas.map(p => p.id));
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
   const [productName, setProductName] = useState("");
@@ -124,7 +127,9 @@ export default function App() {
         return p ? `${p.name}: ${r.headline}\nDealbreakers: ${(r.dealbreakers||[]).join("; ")}\nBuy%: ${r.buyProbability}%\nCompetitor: ${r.competitorMention}` : "";
       }).filter(Boolean).join("\n---\n");
       const text = await callAPI({ modelId: selectedModelId, system: STEELMAN_PROMPT, userMessage: `PRODUCT: ${productName}\nDESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nFEEDBACK:\n${summary}`, maxTokens: 1500, signal });
-      setSteelMan(extractJSON(text)); setActiveTab("steelman");
+      const steelManData = extractJSON(text);
+      setSteelMan(steelManData); setActiveTab("steelman");
+      return steelManData;
     } catch (err) {
       if (err.name === "AbortError") throw err;
       setGlobalError({ title: "Pre-Mortem Failed", message: err.message, detail: err.message, retryable: true });
@@ -160,7 +165,9 @@ export default function App() {
       const jtbdSummary = synthesisData ? `EXECUTIVE SUMMARY: ${synthesisData.executiveSummary}\nFORCES: Push — ${synthesisData.forces?.push} | Pull — ${synthesisData.forces?.pull} | Anxiety — ${synthesisData.forces?.anxiety} | Habit — ${synthesisData.forces?.habit}\nTOP JOBS: ${(synthesisData.jobs||[]).map(j => j.statement).join(" / ")}\nMARKET GAPS: ${(synthesisData.marketGaps||[]).map(g => `${g.gap} (${g.demand} demand)`).join("; ")}` : "";
       const guidanceSection = guidance.trim() ? `\n\nADDITIONAL DIRECTION: ${guidance.trim()}` : "";
       const text = await callAPI({ modelId: selectedModelId, system: REWRITE_PROMPT, userMessage: `ORIGINAL PRODUCT: ${productName}\nORIGINAL DESCRIPTION: ${productDesc || "N/A"}\nCOMPETITORS: ${comps.join(", ") || "Not specified"}\n\nPERSONA FEEDBACK:\n${personaSummary}\n\nJTBD SYNTHESIS:\n${jtbdSummary}${guidanceSection}\n\nRewrite the product offering based on all of this.`, maxTokens: 3000, signal });
-      setRewrite(extractJSON(text)); setActiveTab("rewrite");
+      const rewriteData = extractJSON(text);
+      setRewrite(rewriteData); setActiveTab("rewrite");
+      return rewriteData;
     } catch (err) {
       if (err.name === "AbortError") throw err;
       setGlobalError({ title: "Product Rewrite Failed", message: err.message, detail: err.message, retryable: true });
@@ -210,8 +217,29 @@ export default function App() {
       // Auto-run synthesis, pre-mortem, and rewrite if 2+ results
       if (Object.keys(allResults).length >= 2) {
         const synthesisData = await runSynthesis(allResults, signal);
-        await runSteelMan(allResults, signal);
-        await runRewrite(allResults, synthesisData, signal);
+        const steelManResult = await runSteelMan(allResults, signal);
+        const rewriteResult = await runRewrite(allResults, synthesisData, signal);
+
+        if (!signal.aborted && user) {
+          try {
+            const product = await ensureProduct({ name: productName, description: productDesc });
+            if (product) {
+              await saveRun({
+                productId: product.id,
+                cynicism,
+                modelId: selectedModelId,
+                competitors: comps,
+                selectedPersonaIds: selectedIds,
+                results: allResults,
+                synthesis: synthesisData ?? null,
+                steelman: steelManResult ?? null,
+                rewrite: rewriteResult ?? null,
+              });
+            }
+          } catch (err) {
+            console.error("Failed to save run:", err);
+          }
+        }
       }
     } catch (err) {
       if (err.name !== "AbortError") setGlobalError({ title: "Research Failed", message: err.message, retryable: true });
@@ -305,6 +333,15 @@ export default function App() {
 
             {/* Product Input */}
             <Card style={{ marginBottom: 20 }}>
+              <ProductSelector
+                products={products}
+                selectedProduct={selectedProduct}
+                onSelect={p => {
+                  selectProduct(p);
+                  if (p) { setProductName(p.name); setProductDesc(p.description || ""); }
+                  else { setProductName(""); setProductDesc(""); }
+                }}
+              />
               <input placeholder="Product name" value={productName} onChange={e => setProductName(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--heading)", fontWeight: 600, fontSize: 16, boxSizing: "border-box", marginBottom: 10 }} />
               <textarea placeholder="Description, pricing, target audience..." value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={3} style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
 
