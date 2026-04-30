@@ -7,6 +7,8 @@ import { EXAMPLE_DATA } from "./data/exampleData.js";
 
 import { callAPI, extractJSON, MODELS } from "./api/llm.js";
 import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
+import { useAuth } from "./hooks/useAuth.js";
+import { useHistory } from "./hooks/useHistory.js";
 
 const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 5: "Ruthless" };
 
@@ -15,6 +17,8 @@ const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 
 // ═══════════════════════════════════════════
 export default function App() {
   const { personas, addPersona, updatePersona } = usePersonas();
+  const { user, authReady } = useAuth();
+  const { getProducts, createProduct, updateProduct, saveRun, updateRun, getProductRuns } = useHistory(user?.id);
   const [selectedIds, setSelectedIds] = useState(() => personas.map(p => p.id));
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
   const [productName, setProductName] = useState("");
