@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { downloadFeedbackPDF } from "./FeedbackPDF";
 import { usePersonas } from "./personas/usePersonas";
 import { buildSystemPrompt, JTBD_PROMPT, REWRITE_PROMPT, STEELMAN_PROMPT, PERSONA_GEN_PROMPT } from "./prompts/index.js";
@@ -10,7 +10,9 @@ import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.
 import { useAuth } from "./hooks/useAuth.js";
 import { useHistory } from "./hooks/useHistory.js";
 import { useProducts } from "./hooks/useProducts.js";
+import { useRunHistory } from "./hooks/useRunHistory.js";
 import { ProductSelector } from "./components/ProductSelector.jsx";
+import { HistoryStrip } from "./components/HistoryStrip.jsx";
 
 const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 5: "Ruthless" };
 
@@ -20,8 +22,9 @@ const CYNICISM_LABELS = { 1: "Generous", 2: "Fair", 3: "Skeptical", 4: "Harsh", 
 export default function App() {
   const { personas, addPersona, updatePersona } = usePersonas();
   const { user, authReady } = useAuth();
-  const { saveRun, getProductRuns } = useHistory(user?.id);
+  const { saveRun } = useHistory(user?.id);
   const { products, selectedProduct, selectProduct, ensureProduct } = useProducts(user?.id);
+  const { runs, refreshRuns } = useRunHistory(user?.id, selectedProduct?.id);
   const [selectedIds, setSelectedIds] = useState(() => personas.map(p => p.id));
   const [selectedModelId, setSelectedModelId] = useState(MODELS[0].id);
   const [productName, setProductName] = useState("");
@@ -235,6 +238,7 @@ export default function App() {
                 steelman: steelManResult ?? null,
                 rewrite: rewriteResult ?? null,
               });
+              refreshRuns();
             }
           } catch (err) {
             console.error("Failed to save run:", err);
@@ -258,6 +262,20 @@ export default function App() {
     } catch (err) { setPersonaErrors(prev => ({ ...prev, [persona.id]: err.message })); }
     finally { setLoading(prev => ({ ...prev, [persona.id]: false })); }
   };
+
+  const handleLoadRun = useCallback((run) => {
+    const loadedResults = {};
+    (run.persona_results || []).forEach(pr => { loadedResults[pr.persona_id] = pr.result; });
+    setResults(loadedResults);
+    setLastResults(loadedResults);
+    setSynthesis(run.synthesis ?? null);
+    setSteelMan(run.steelman ?? null);
+    setRewrite(run.rewrite ?? null);
+    setCynicism(run.cynicism ?? 3);
+    if (run.model_id) setSelectedModelId(run.model_id);
+    setActiveTab("feedback");
+    setPersonaErrors({});
+  }, []);
 
   const save = () => { if (editPersona) { updatePersona(editPersona); setEditPersona(null); } setView("research"); };
   const create = () => { const id = addPersona({ ...newPersona, id: `c-${Date.now()}`, petPeeves: newPersona.petPeeves.filter(x => x.trim()) }); setSelectedIds(p => [...p, id]); setNewPersona({ name: "", role: "", avatar: "🧑", color: "#8B5CF6", traits: { skepticism: 7, technicalDepth: 5, priceConscious: 7, easeOfUseWeight: 7, brandLoyalty: 3 }, backstory: "", averageRating: 4, petPeeves: [""], pedigree: { calibratedFrom: "", biasProfile: "", blindSpot: "" } }); setView("research"); };
@@ -458,6 +476,9 @@ export default function App() {
                 )}
               </>
             )}
+
+            {/* History Strip */}
+            {selectedProduct && <HistoryStrip runs={runs} onLoad={handleLoadRun} />}
           </>
         )}
       </div>
