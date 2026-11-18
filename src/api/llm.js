@@ -14,9 +14,35 @@ export const MODELS = [
   { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "google", thinking: false, freeTier: true },
 ];
 
+const REQUEST_TIMEOUT_MS = 60_000;
+const MAX_BACKOFF_MS = 30_000;
+
+function sleepAbortable(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException("Aborted", "AbortError"));
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    }, { once: true });
+  });
+}
+
+function backoffMs(attempt, retryAfterHeader) {
+  const headerSeconds = parseInt(retryAfterHeader ?? "", 10);
+  if (Number.isFinite(headerSeconds) && headerSeconds > 0) return Math.min(headerSeconds * 1000, MAX_BACKOFF_MS);
+  const base = Math.min(1000 * 2 ** attempt, MAX_BACKOFF_MS);
+  return base / 2 + Math.random() * (base / 2);
+}
+
+function withTimeout(signal) {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
 export async function callAPI({ modelId, system, userMessage, maxTokens = 4096, thinking = false, signal }, retries = 3) {
   const model = MODELS.find(m => m.id === modelId) || MODELS[0];
-  
+
   if (model.provider === "anthropic") {
     return callAnthropic({ modelId: model.id, system, userMessage, maxTokens, thinking, signal }, retries);
   } else if (model.provider === "google") {
@@ -25,7 +51,7 @@ export async function callAPI({ modelId, system, userMessage, maxTokens = 4096, 
   throw new Error(`Unsupported provider: ${model.provider}`);
 }
 
-async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries) {
+async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries, attempt = 0) {
   const { anthropic: ANTHROPIC_KEY } = getAPIKeys();
   if (!ANTHROPIC_KEY) throw new Error("Missing Anthropic API Key. Please add it in Settings.");
 
@@ -39,7 +65,7 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    signal,
+    signal: withTimeout(signal),
     headers: {
       "Content-Type": "application/json",
       "x-api-key": ANTHROPIC_KEY,
@@ -50,12 +76,8 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
   });
 
   if (resp.status === 429 && retries > 0) {
-    const retryAfter = parseInt(resp.headers.get("retry-after") || "20", 10);
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(resolve, retryAfter * 1000);
-      signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
-    });
-    return callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries - 1);
+    await sleepAbortable(backoffMs(attempt, resp.headers.get("retry-after")), signal);
+    return callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries - 1, attempt + 1);
   }
 
   if (!resp.ok) {
@@ -72,12 +94,10 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
   return textBlock.text;
 }
 
-async function callGemini({ modelId, system, userMessage, maxTokens, signal }, retries) {
+async function callGemini({ modelId, system, userMessage, maxTokens, signal }, retries, attempt = 0) {
   const { gemini: GEMINI_KEY } = getAPIKeys();
   if (!GEMINI_KEY) throw new Error("Missing Gemini API Key. Please add it in Settings.");
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${GEMINI_KEY}`;
-  
   const body = {
     contents: [{
       role: "user",
@@ -92,19 +112,19 @@ async function callGemini({ modelId, system, userMessage, maxTokens, signal }, r
     }
   };
 
-  const resp = await fetch(url, {
+  const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent`, {
     method: "POST",
-    signal,
-    headers: { "Content-Type": "application/json" },
+    signal: withTimeout(signal),
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": GEMINI_KEY,
+    },
     body: JSON.stringify(body),
   });
 
   if (resp.status === 429 && retries > 0) {
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(resolve, 5000);
-      signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("Aborted", "AbortError")); });
-    });
-    return callGemini({ modelId, system, userMessage, maxTokens, signal }, retries - 1);
+    await sleepAbortable(backoffMs(attempt, resp.headers.get("retry-after")), signal);
+    return callGemini({ modelId, system, userMessage, maxTokens, signal }, retries - 1, attempt + 1);
   }
 
   if (!resp.ok) {
