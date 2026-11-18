@@ -184,4 +184,6 @@ Honest about what this isn't yet, and where I'd take it:
 
 ## License
 
-MIT.
+Released under the [MIT License](./LICENSE) — free for personal and commercial use, including derivative works. Copyright © 2026 Dan Fisher.
+
+If you fork this or build on the orchestrator / persona-generation patterns, attribution is appreciated but not required. Issues and pull requests welcome.
