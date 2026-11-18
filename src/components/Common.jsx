@@ -8,6 +8,11 @@ export const RATING_DIMS = [
   { key: "wouldRecommend", label: "Recommend", icon: "➤" },
 ];
 
+// Shared color scales — keep in sync so ratings read consistently across
+// the DOM UI and the PDF export.
+export const ratingColor = (v) => v <= 3 ? "#E84855" : v <= 5 ? "#F9A03F" : v <= 7 ? "#3185FC" : "#2EC4B6";
+export const buyProbColor = (v) => parseInt(v) < 30 ? "#E84855" : parseInt(v) < 60 ? "#F9A03F" : "#2EC4B6";
+
 export const Card = ({ children, style = {} }) => (
   <div style={{ background: "var(--s1)", borderRadius: 12, border: "1px solid var(--bdr)", padding: 20, ...style }}>
     {children}
@@ -64,7 +69,7 @@ export const TabBtn = ({ active, onClick, children, badge }) => (
 );
 
 export const RatingBar = ({ value, label, icon }) => {
-  const c = value <= 3 ? "#E84855" : value <= 5 ? "#F9A03F" : value <= 7 ? "#3185FC" : "#2EC4B6";
+  const c = ratingColor(value);
   return (
     <div style={{ marginBottom: 8 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontFamily: "var(--mono)", marginBottom: 3, color: "var(--t2)" }}>

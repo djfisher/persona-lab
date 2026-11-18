@@ -1,4 +1,4 @@
-import { Card, RatingBar, RATING_DIMS } from "../Common";
+import { Card, RatingBar, RATING_DIMS, ratingColor } from "../Common";
 
 const BuyFormula = ({ params, prob }) => {
   if (!params) return null;
@@ -16,7 +16,7 @@ const BuyFormula = ({ params, prob }) => {
 
 export const FeedbackPanel = ({ result, persona, onViewMethodology }) => {
   if (!result) return null;
-  const oc = result.ratings.overall <= 3 ? "#E84855" : result.ratings.overall <= 5 ? "#F9A03F" : result.ratings.overall <= 7 ? "#3185FC" : "#2EC4B6";
+  const oc = ratingColor(result.ratings.overall);
   return (
     <Card style={{ marginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--bdr)" }}>

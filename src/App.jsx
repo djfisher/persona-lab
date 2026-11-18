@@ -6,7 +6,7 @@ import { MethodologyPanel, FeedbackPanel, SteelManPanel, JTBDPanel, RewritePanel
 import { EXAMPLE_DATA } from "./data/exampleData.js";
 
 import { callAPI, extractJSON, MODELS } from "./api/llm.js";
-import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS } from "./components/Common.jsx";
+import { Card, SH, TabBtn, ErrorBanner, RATING_DIMS, ratingColor, buyProbColor } from "./components/Common.jsx";
 import { useAuth } from "./hooks/useAuth.js";
 import { useHistory } from "./hooks/useHistory.js";
 import { useProducts } from "./hooks/useProducts.js";
@@ -94,6 +94,17 @@ export default function App() {
     setRewriting(false);
   };
 
+  // Standalone invocation of an agent runner: registers a fresh AbortController
+  // with abortRef so the Stop button can cancel it, then clears the ref when done.
+  const runStandalone = (fn) => {
+    abortRef.current?.abort();
+    const c = new AbortController();
+    abortRef.current = c;
+    return Promise.resolve(fn(c.signal)).finally(() => {
+      if (abortRef.current === c) abortRef.current = null;
+    });
+  };
+
   const comps = competitors.filter(c => c.trim());
   const toggle = id => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
@@ -108,16 +119,19 @@ export default function App() {
   };
 
   // ─── Auto-Generate Persona ───
-  const genPersona = async () => {
+  const genPersona = async (signal) => {
     if (!genNiche.trim()) return;
     setGenerating(true); setGlobalError(null);
     try {
-      const text = await callAPI({ modelId: selectedModelId, system: PERSONA_GEN_PROMPT, userMessage: `Generate an adversarial persona for: ${genNiche}\nMake them deeply skeptical and calibrated to this industry.`, maxTokens: 1000 });
+      const text = await callAPI({ modelId: selectedModelId, system: PERSONA_GEN_PROMPT, userMessage: `Generate an adversarial persona for: ${genNiche}\nMake them deeply skeptical and calibrated to this industry.`, maxTokens: 1000, signal });
       const p = extractJSON(text);
       const id = addPersona(p);
       setSelectedIds(prev => [...prev, id]);
       setGenNiche(""); setView("research");
-    } catch (err) { setGlobalError({ title: "Persona Generation Failed", message: err.message, retryable: true }); }
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setGlobalError({ title: "Persona Generation Failed", message: err.message, retryable: true });
+    }
     finally { setGenerating(false); }
   };
 
@@ -242,6 +256,7 @@ export default function App() {
             }
           } catch (err) {
             console.error("Failed to save run:", err);
+            setGlobalError({ title: "Couldn't Save Run", message: err.message, retryable: false });
           }
         }
       }
@@ -253,13 +268,18 @@ export default function App() {
   };
 
   // ─── Retry single persona ───
-  const retrySingle = async (persona) => {
+  const retrySingle = async (persona, signal) => {
     setPersonaErrors(prev => { const n = { ...prev }; delete n[persona.id]; return n; });
     setLoading(prev => ({ ...prev, [persona.id]: true }));
     try {
-      const text = await callAPI({ modelId: selectedModelId, system: buildSystemPrompt(persona, comps, cynicism), userMessage: `Review this product:\n\nProduct: ${productName}\nDescription: ${productDesc || "No description."}\n${comps.length ? `Known Competitors: ${comps.join(", ")}` : ""}\n\nGive your honest assessment.` });
-      setResults(prev => { const u = { ...prev, [persona.id]: extractJSON(text) }; setLastResults(u); return u; });
-    } catch (err) { setPersonaErrors(prev => ({ ...prev, [persona.id]: err.message })); }
+      const text = await callAPI({ modelId: selectedModelId, system: buildSystemPrompt(persona, comps, cynicism), userMessage: `Review this product:\n\nProduct: ${productName}\nDescription: ${productDesc || "No description."}\n${comps.length ? `Known Competitors: ${comps.join(", ")}` : ""}\n\nGive your honest assessment.`, signal });
+      const parsed = extractJSON(text);
+      setResults(prev => ({ ...prev, [persona.id]: parsed }));
+      setLastResults(prev => ({ ...prev, [persona.id]: parsed }));
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setPersonaErrors(prev => ({ ...prev, [persona.id]: err.message }));
+    }
     finally { setLoading(prev => ({ ...prev, [persona.id]: false })); }
   };
 
@@ -326,7 +346,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}><h2 style={{ fontFamily: "var(--heading)", fontSize: 18, fontWeight: 700, margin: 0, color: "var(--t1)" }}>Auto-Generate Persona</h2><button onClick={() => setView("research")} style={{ background: "none", border: "none", color: "var(--t2)", cursor: "pointer", fontSize: 16 }}>✕</button></div>
             <div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 12, lineHeight: 1.5 }}>Describe your niche and we'll generate a domain-specific adversarial persona. E.g. "healthcare SaaS", "crypto trading", "restaurant POS"</div>
             <input placeholder="Industry niche..." value={genNiche} onChange={e => setGenNiche(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--bdr)", borderRadius: 8, background: "var(--s2)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 13, boxSizing: "border-box", marginBottom: 12 }} />
-            <button onClick={genPersona} disabled={!genNiche.trim() || generating} style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: genNiche.trim() && !generating ? "linear-gradient(135deg, #2EC4B6, #3185FC)" : "var(--s2)", color: genNiche.trim() && !generating ? "#fff" : "var(--t2)", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 14, cursor: genNiche.trim() && !generating ? "pointer" : "default" }}>{generating ? "Generating..." : "Generate Adversarial Persona"}</button>
+            <button onClick={() => runStandalone(signal => genPersona(signal))} disabled={!genNiche.trim() || generating} style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", background: genNiche.trim() && !generating ? "linear-gradient(135deg, #2EC4B6, #3185FC)" : "var(--s2)", color: genNiche.trim() && !generating ? "#fff" : "var(--t2)", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 14, cursor: genNiche.trim() && !generating ? "pointer" : "default" }}>{generating ? "Generating..." : "Generate Adversarial Persona"}</button>
           </Card>
         )}
 
@@ -386,7 +406,7 @@ export default function App() {
             </Card>
 
             {/* Errors */}
-            <ErrorBanner error={globalError} onDismiss={() => setGlobalError(null)} onRetry={globalError?.title?.includes("JTBD") && lastResults ? () => runSynthesis(lastResults) : globalError?.title?.includes("Pre-Mortem") && lastResults ? () => runSteelMan(lastResults) : globalError?.title?.includes("Persona") ? genPersona : null} />
+            <ErrorBanner error={globalError} onDismiss={() => setGlobalError(null)} onRetry={globalError?.title?.includes("JTBD") && lastResults ? () => runStandalone(signal => runSynthesis(lastResults, signal)) : globalError?.title?.includes("Pre-Mortem") && lastResults ? () => runStandalone(signal => runSteelMan(lastResults, signal)) : globalError?.title?.includes("Persona") ? () => runStandalone(signal => genPersona(signal)) : null} />
 
             {/* Loading */}
             {(anyLoad || synthesizing || steelManning || rewriting) && (
@@ -409,7 +429,7 @@ export default function App() {
                 <TabBtn active={activeTab === "steelman"} onClick={() => setActiveTab("steelman")} badge={steelMan ? "💀" : null}>Pre-Mortem</TabBtn>
                 <TabBtn active={activeTab === "rewrite"} onClick={() => setActiveTab("rewrite")} badge={rewrite ? "✨" : null}>Rewrite</TabBtn>
                 {selectedProduct && runs.length > 0 && <TabBtn active={activeTab === "history"} onClick={() => setActiveTab("history")} badge={runs.length}>History</TabBtn>}
-                {rc >= 2 && !steelMan && !steelManning && <button onClick={() => runSteelMan(results)} style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid #E8485555", background: "#E8485515", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>💀 Tell Me Why I'm Wrong</button>}
+                {rc >= 2 && !steelMan && !steelManning && <button onClick={() => runStandalone(signal => runSteelMan(results, signal))} style={{ marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid #E8485555", background: "#E8485515", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>💀 Tell Me Why I'm Wrong</button>}
                 <button onClick={handleDownloadPDF} disabled={downloading} style={{ marginLeft: rc >= 2 && !steelMan && !steelManning ? 0 : "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid var(--bdr)", background: downloading ? "var(--s2)" : "var(--s1)", color: downloading ? "var(--t2)" : "var(--t1)", fontFamily: "var(--mono)", fontSize: 11, cursor: downloading ? "default" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>{downloading ? "Generating..." : "↓ Download PDF"}</button>
               </div>
             )}
@@ -419,13 +439,13 @@ export default function App() {
             {/* Feedback Tab */}
             {activeTab === "feedback" && <>
               {personas.filter(p => results[p.id]).map(p => <FeedbackPanel key={p.id} result={results[p.id]} persona={p} onViewMethodology={() => setViewMethodology(viewMethodology?.id === p.id ? null : p)} />)}
-              {personas.filter(p => personaErrors[p.id]).map(p => <Card key={p.id} style={{ marginTop: 16, borderLeft: "3px solid #E84855" }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 28 }}>{p.avatar}</span><div style={{ flex: 1 }}><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 14, color: "var(--t1)" }}>{p.name}</div><div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "#E84855", marginTop: 2 }}>{personaErrors[p.id]}</div></div><button onClick={() => retrySingle(p)} style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #E8485555", background: "#E8485520", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Retry</button></div></Card>)}
+              {personas.filter(p => personaErrors[p.id]).map(p => <Card key={p.id} style={{ marginTop: 16, borderLeft: "3px solid #E84855" }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ fontSize: 28 }}>{p.avatar}</span><div style={{ flex: 1 }}><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 14, color: "var(--t1)" }}>{p.name}</div><div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "#E84855", marginTop: 2 }}>{personaErrors[p.id]}</div></div><button onClick={() => runStandalone(signal => retrySingle(p, signal))} style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #E8485555", background: "#E8485520", color: "#E84855", fontFamily: "var(--mono)", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Retry</button></div></Card>)}
             </>}
 
             {/* Comparison Tab */}
             {activeTab === "comparison" && rc > 1 && <Card>
               <SH>Rating Comparison</SH>
-              <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--mono)", fontSize: 12 }}><thead><tr><th style={{ textAlign: "left", padding: "8px 12px", borderBottom: "1px solid var(--bdr)", color: "var(--t2)" }}>Persona</th>{RATING_DIMS.map(d => <th key={d.key} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", color: "var(--t2)", fontSize: 10 }}>{d.label}</th>)}<th style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", color: "var(--t2)", fontSize: 10 }}>Buy%</th></tr></thead><tbody>{personas.filter(p => results[p.id]).map(p => <tr key={p.id}><td style={{ padding: "8px 12px", borderBottom: "1px solid var(--bdr)" }}>{p.avatar} {p.name}</td>{RATING_DIMS.map(d => { const v = results[p.id].ratings[d.key]; const c = v <= 3 ? "#E84855" : v <= 5 ? "#F9A03F" : v <= 7 ? "#3185FC" : "#2EC4B6"; return <td key={d.key} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", color: c, fontWeight: 700 }}>{v}</td>; })}<td style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", fontWeight: 700, color: parseInt(results[p.id].buyProbability) < 30 ? "#E84855" : parseInt(results[p.id].buyProbability) < 60 ? "#F9A03F" : "#2EC4B6" }}>{results[p.id].buyProbability}%</td></tr>)}</tbody></table></div>
+              <div style={{ overflowX: "auto" }}><table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "var(--mono)", fontSize: 12 }}><thead><tr><th style={{ textAlign: "left", padding: "8px 12px", borderBottom: "1px solid var(--bdr)", color: "var(--t2)" }}>Persona</th>{RATING_DIMS.map(d => <th key={d.key} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", color: "var(--t2)", fontSize: 10 }}>{d.label}</th>)}<th style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", color: "var(--t2)", fontSize: 10 }}>Buy%</th></tr></thead><tbody>{personas.filter(p => results[p.id]).map(p => <tr key={p.id}><td style={{ padding: "8px 12px", borderBottom: "1px solid var(--bdr)" }}>{p.avatar} {p.name}</td>{RATING_DIMS.map(d => { const v = results[p.id].ratings[d.key]; return <td key={d.key} style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", color: ratingColor(v), fontWeight: 700 }}>{v}</td>; })}<td style={{ textAlign: "center", padding: 8, borderBottom: "1px solid var(--bdr)", fontWeight: 700, color: buyProbColor(results[p.id].buyProbability) }}>{results[p.id].buyProbability}%</td></tr>)}</tbody></table></div>
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--bdr)" }}>
                 <SH>Dealbreaker Convergence</SH>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{(() => { const db = {}; personas.filter(p => results[p.id]).forEach(p => (results[p.id].dealbreakers||[]).forEach(d => { const k = d.toLowerCase().slice(0, 40); if (!db[k]) db[k] = { text: d, n: 0, av: [] }; db[k].n++; db[k].av.push(p.avatar); })); return Object.values(db).sort((a, b) => b.n - a.n).map((d, i) => <div key={i} style={{ padding: "6px 10px", background: d.n > 1 ? "#E8485518" : "var(--s2)", border: `1px solid ${d.n > 1 ? "#E8485544" : "var(--bdr)"}`, borderRadius: 6, fontSize: 11, fontFamily: "var(--mono)", color: "var(--t1)" }}><span style={{ marginRight: 4 }}>{d.av.join("")}</span> {d.text}</div>); })()}</div>
@@ -433,10 +453,10 @@ export default function App() {
             </Card>}
 
             {/* JTBD Tab */}
-            {activeTab === "jtbd" && (synthesis ? <JTBDPanel synthesis={synthesis} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No synthesis yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Run research to generate"}</div>{rc >= 2 && !synthesizing && <button onClick={() => runSynthesis(results)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2EC4B6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Run JTBD Synthesis</button>}</Card>)}
+            {activeTab === "jtbd" && (synthesis ? <JTBDPanel synthesis={synthesis} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No synthesis yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Run research to generate"}</div>{rc >= 2 && !synthesizing && <button onClick={() => runStandalone(signal => runSynthesis(results, signal))} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #2EC4B6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>Run JTBD Synthesis</button>}</Card>)}
 
             {/* Pre-Mortem Tab */}
-            {activeTab === "steelman" && (steelMan ? <SteelManPanel steelMan={steelMan} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>💀</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No pre-mortem yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Click 'Tell Me Why I'm Wrong'"}</div>{rc >= 2 && !steelManning && <button onClick={() => runSteelMan(results)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#E84855", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💀 Tell Me Why I'm Wrong</button>}</Card>)}
+            {activeTab === "steelman" && (steelMan ? <SteelManPanel steelMan={steelMan} /> : <Card style={{ textAlign: "center", padding: 40 }}><div style={{ fontSize: 32, marginBottom: 12 }}>💀</div><div style={{ fontFamily: "var(--heading)", fontWeight: 700, fontSize: 16, color: "var(--t1)", marginBottom: 6 }}>No pre-mortem yet</div><div style={{ fontSize: 12, color: "var(--t2)", fontFamily: "var(--mono)", marginBottom: 16 }}>{rc < 2 ? "Need 2+ persona results" : "Click 'Tell Me Why I'm Wrong'"}</div>{rc >= 2 && !steelManning && <button onClick={() => runStandalone(signal => runSteelMan(results, signal))} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#E84855", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>💀 Tell Me Why I'm Wrong</button>}</Card>)}
 
             {/* Rewrite Tab */}
             {activeTab === "rewrite" && (
@@ -455,7 +475,7 @@ export default function App() {
                           rows={3}
                           style={{ width: "100%", maxWidth: 480, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical", outline: "none" }}
                         />
-                        <button onClick={() => runRewrite(results, synthesis, undefined, rewriteGuidance)} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✨ Rewrite Product Offering</button>
+                        <button onClick={() => runStandalone(signal => runRewrite(results, synthesis, signal, rewriteGuidance))} style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✨ Rewrite Product Offering</button>
                       </div>
                     )}
                   </Card>
@@ -471,7 +491,7 @@ export default function App() {
                         rows={2}
                         style={{ flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid var(--bdr)", background: "var(--s1)", color: "var(--t1)", fontFamily: "var(--mono)", fontSize: 12, resize: "vertical", outline: "none" }}
                       />
-                      <button onClick={() => runRewrite(results, synthesis, undefined, rewriteGuidance)} style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}>↻ Re-run</button>
+                      <button onClick={() => runStandalone(signal => runRewrite(results, synthesis, signal, rewriteGuidance))} style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8B5CF6, #3185FC)", color: "#fff", fontFamily: "var(--heading)", fontWeight: 700, fontSize: 13, cursor: "pointer", whiteSpace: "nowrap" }}>↻ Re-run</button>
                     </div>
                   </Card>
                 )}

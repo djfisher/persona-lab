@@ -1,4 +1,5 @@
 import { Document, Page, View, Text, StyleSheet, pdf } from "@react-pdf/renderer";
+import { ratingColor, buyProbColor } from "./components/Common.jsx";
 
 const ACCENT = "#E84855";
 const TEAL = "#2EC4B6";
@@ -140,14 +141,6 @@ const s = StyleSheet.create({
   pageBreak: { marginTop: 0 },
 });
 
-function ratingColor(v) {
-  return v <= 3 ? ACCENT : v <= 5 ? AMBER : v <= 7 ? BLUE : TEAL;
-}
-
-function probColor(v) {
-  return parseInt(v) < 30 ? ACCENT : parseInt(v) < 60 ? AMBER : TEAL;
-}
-
 function priorityColor(p) {
   return p === "critical" ? ACCENT : p === "high" ? AMBER : p === "medium" ? BLUE : "#9CA3AF";
 }
@@ -240,7 +233,7 @@ const PersonaPage = ({ persona, result }) => {
           <View style={{ marginTop: 10 }}>
             <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
               <Text style={[s.label, { marginBottom: 0, marginRight: 8 }]}>Buy Probability</Text>
-              <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: probColor(result.buyProbability) }}>{result.buyProbability}%</Text>
+              <Text style={{ fontSize: 16, fontFamily: "Helvetica-Bold", color: buyProbColor(result.buyProbability) }}>{result.buyProbability}%</Text>
             </View>
             {result.buyParams && (
               <View style={s.buyBox}>
@@ -333,7 +326,7 @@ const ComparisonPage = ({ personas, results }) => {
               const v = results[p.id].ratings[d.key];
               return <Text key={d.key} style={[s.tableCell, { color: ratingColor(v) }]}>{v}</Text>;
             })}
-            <Text style={[s.tableCell, { color: probColor(results[p.id].buyProbability) }]}>{results[p.id].buyProbability}%</Text>
+            <Text style={[s.tableCell, { color: buyProbColor(results[p.id].buyProbability) }]}>{results[p.id].buyProbability}%</Text>
           </View>
         ))}
       </View>
