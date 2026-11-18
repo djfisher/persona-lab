@@ -20,19 +20,13 @@ Each persona has a baked-in bias profile ("Senior dev, burned by 3 dead platform
 
 ## Meet the adversarial personas
 
-The app ships with two persona packs:
+The app ships with a pack of generic adversaries — the lineup that savages most products:
 
-**Generic adversaries** — the lineup that savages most products:
 - **Marcus Chen**, senior dev, 15 years. Burned by vendor lock-in. Rates most software 4/10 and considers a 7 genuine praise.
 - **Diane Okafor**, B2B SaaS PM. Has lived through 15 failed tool rollouts. Asks "will my least technical teammate actually use this daily?"
 - **Raj Patel**, 3x bootstrapped founder. Calculates ROI on every dollar. Suspicious of subscription pricing and anything without a free tier.
 
-**TRT / men's-health vertical** — showing persona packs can be domain-specific:
-- **Derek Walsh**, 44, borderline-low T, deeply suspicious of telehealth prescription mills.
-- **Mike Reyes**, 38, six months deep on r/Testosterone. More informed than most providers he's talked to.
-- **Tom Harrington**, 49, runs a construction crew. Zero interest in logging symptoms or reading dashboards.
-
-New personas can be AI-generated for any niche via `PERSONA_GEN_PROMPT` (`src/prompts/index.js:96`), which enforces adversarial calibration — high skepticism, low brand loyalty, industry-specific pet peeves.
+Persona packs are designed to be domain-specific — new personas can be AI-generated for any niche via `PERSONA_GEN_PROMPT` (`src/prompts/index.js:96`), which enforces adversarial calibration: high skepticism, low brand loyalty, industry-specific pet peeves.
 
 Each persona also carries a **pedigree** block: `calibratedFrom`, `biasProfile`, and `blindSpot`. The reviewer can see *what the persona is good at critiquing and where their judgment is suspect*, so no single voice dominates the synthesis.
 
@@ -157,7 +151,7 @@ src/
 ├── api/llm.js                 # provider-agnostic LLM client
 ├── prompts/index.js           # all system prompts + persona formula
 ├── personas/
-│   ├── defaultPersonas.js     # generic + TRT persona packs
+│   ├── defaultPersonas.js     # generic adversarial persona pack
 │   └── usePersonas.js         # persona CRUD + persistence
 ├── components/
 │   ├── Common.jsx             # shared UI primitives

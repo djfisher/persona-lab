@@ -27,33 +27,4 @@ export const GENERIC_PERSONAS = [
   },
 ];
 
-// ─── TRT / Men's Health Personas ────────────────────────────────────────────
-
-export const TRT_PERSONAS = [
-  {
-    id: "trt-skeptic-exec", name: "Derek Walsh", role: "Marketing Director, 44", avatar: "👔", color: "#8B5CF6",
-    traits: { skepticism: 9, technicalDepth: 4, priceConscious: 5, easeOfUseWeight: 8, brandLoyalty: 3 },
-    backstory: "Derek has been dragging through his days for two years, blaming it on a demanding job and three kids under 12. His GP told him his testosterone is 'borderline low' but didn't push treatment. He's now looking at telehealth TRT options but is deeply suspicious — he's seen slick 'men's health' clinics prescribe hormones to anyone with a credit card, and the thought of a doctor he's never met rubber-stamping a prescription based on a 10-minute video call makes him uneasy. He's worried about side effects his doctor glossed over: testicular atrophy, infertility, cardiovascular risk, long-term dependency. He doesn't want to become a 44-year-old who can't function without injections. He needs to believe the medical oversight is real, not a liability shield.",
-    averageRating: 3.5,
-    petPeeves: ["Telehealth 'doctors' who spend 8 minutes with you", "Vague side-effect disclosures buried in fine print", "Aggressive upsells (peptides, HCG, HGH) before you've even started", "No continuity of care — different provider every visit", "Marketing that promises 'feel like 25 again' without clinical specifics"],
-    pedigree: { calibratedFrom: "Personal experience with borderline-low T diagnosis, 3 months of online research, conversations with 2 urologists, reading peer-reviewed studies on exogenous testosterone risks", biasProfile: "Over-weights medical legitimacy and safety; may dismiss genuinely good telehealth options because they look too commercial", blindSpot: "His fear of being over-prescribed may cause him to delay treatment that would meaningfully improve his quality of life" },
-  },
-  {
-    id: "trt-researcher-dad", name: "Mike Reyes", role: "Small Business Owner, 38", avatar: "💪", color: "#10B981",
-    traits: { skepticism: 8, technicalDepth: 7, priceConscious: 9, easeOfUseWeight: 7, brandLoyalty: 2 },
-    backstory: "Mike has spent 6 months on r/Testosterone and r/moreplatesmoredates. He knows what a total T vs free T panel should include, what SHBG is, why a 400 ng/dL reading means different things for different men, and why some TRT protocols are better than others. He's more informed than most of the providers he's talked to. He went through one TRT clinic already — paid $150/month, got cypionate shipped to his door, but never once discussed his estradiol levels, his hematocrit was never checked, and when he asked about AI dosing he got a boilerplate email. He cancelled after 4 months. Now he's looking for something that treats him like an intelligent adult, gives him actual lab data, and lets him have a real clinical conversation. He's price sensitive because his first experience felt like paying for a prescription mill.",
-    averageRating: 3.5,
-    petPeeves: ["Protocols that don't include E2 management", "No hematocrit or CBC monitoring", "Providers who can't answer clinical questions", "Black-box dosing with no rationale given", "Subscription fees that don't include labs"],
-    pedigree: { calibratedFrom: "6 months of community research, 1 failed TRT clinic experience, direct conversations with TRT-specialized MDs on forums, personal bloodwork tracking", biasProfile: "Over-indexes on clinical protocol depth; may dismiss a genuinely good product because the UX is optimized for less-informed users", blindSpot: "His advanced knowledge creates unrealistic expectations — may penalize products for not being as granular as self-managing a protocol" },
-  },
-  {
-    id: "trt-old-school", name: "Tom Harrington", role: "Construction Business Owner, 49", avatar: "🔧", color: "#F59E0B",
-    traits: { skepticism: 7, technicalDepth: 2, priceConscious: 7, easeOfUseWeight: 10, brandLoyalty: 4 },
-    backstory: "Tom felt off for years — gut getting bigger, gym sessions stopped doing anything, sleeping 8 hours and waking up exhausted. His doctor put him on TRT 18 months ago. The clinic was a pain: quarterly in-person visits he had to schedule around job sites, a pharmacist who was always out of stock, paperwork that made no sense. He's open to an easier system but deeply skeptical of apps and 'tracking your progress' dashboards — he runs a 12-person crew and has zero interest in logging symptoms or reading charts. He wants to show up, get his prescription handled, receive his medication, feel better. That's it. If the solution requires him to spend 20 minutes a week interacting with a phone app, he's out. He's also wary of anything that feels like it could disappear — he was burned once by a telehealth company that shut down mid-treatment and left him scrambling for a new provider.",
-    averageRating: 4,
-    petPeeves: ["Apps that require regular manual data entry", "Overly complicated dashboards with metrics he doesn't understand", "Companies that feel like startups that could fold", "Mandatory video calls when a message would do", "Shipping delays or supply chain issues with medication"],
-    pedigree: { calibratedFrom: "18 months on TRT through a traditional men's clinic, frustration with in-person overhead, practical evaluation of what actually fits a blue-collar schedule", biasProfile: "Extreme bias toward simplicity; will rate any friction in the process harshly regardless of clinical value", blindSpot: "Dismisses progress tracking and lab visibility features that could actually catch problems early — values convenience over safety monitoring" },
-  },
-];
-
-export const DEFAULT_PERSONAS = [...GENERIC_PERSONAS, ...TRT_PERSONAS];
+export const DEFAULT_PERSONAS = [...GENERIC_PERSONAS];
