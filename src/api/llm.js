@@ -52,8 +52,11 @@ export async function callAPI({ modelId, system, userMessage, maxTokens = 4096, 
 }
 
 async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking, signal }, retries, attempt = 0) {
-  const { anthropic: ANTHROPIC_KEY } = getAPIKeys();
-  if (!ANTHROPIC_KEY) throw new Error("Missing Anthropic API Key. Please add it in Settings.");
+  const { anthropic: ANTHROPIC_KEY, gemini: GEMINI_KEY } = getAPIKeys();
+  if (!ANTHROPIC_KEY) {
+    const suggest = GEMINI_KEY ? " You have a Gemini key — switch to a Gemini model in the top-right dropdown to run with it." : "";
+    throw new Error(`Claude models need an Anthropic API key. Add one in Settings.${suggest}`);
+  }
 
   const body = {
     model: modelId,
@@ -95,8 +98,11 @@ async function callAnthropic({ modelId, system, userMessage, maxTokens, thinking
 }
 
 async function callGemini({ modelId, system, userMessage, maxTokens, signal }, retries, attempt = 0) {
-  const { gemini: GEMINI_KEY } = getAPIKeys();
-  if (!GEMINI_KEY) throw new Error("Missing Gemini API Key. Please add it in Settings.");
+  const { gemini: GEMINI_KEY, anthropic: ANTHROPIC_KEY } = getAPIKeys();
+  if (!GEMINI_KEY) {
+    const suggest = ANTHROPIC_KEY ? " You have an Anthropic key — switch to a Claude model in the top-right dropdown to run with it." : "";
+    throw new Error(`Gemini models need a Google API key. Add one in Settings.${suggest}`);
+  }
 
   const body = {
     contents: [{
