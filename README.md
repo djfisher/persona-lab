@@ -56,6 +56,8 @@ Each persona also carries a **pedigree** block: `calibratedFrom`, `biasProfile`,
 
 ```
 buyProbability = round((value + usability) / (priceConscious * skepticism) * 25)
+// value, usability: model-produced ratings on 1–10
+// priceConscious, skepticism: persona traits on 1–10
 ```
 
 Every response is strict JSON — ratings, headline, review, dealbreakers, competitor comparisons, wishlist, unsolved pain points — so stage 2 can consume it machine-readably without re-parsing prose.
@@ -73,7 +75,7 @@ Raw adversarial feedback is useful but noisy — N personas, each with their own
 Persona Lab uses **Clayton Christensen's Jobs-to-be-Done** framework (`JTBD_PROMPT` in `src/prompts/index.js:38`) because it's the right lens for *switching behavior*: why would a customer actually abandon their current solution for this one? The JTBD agent maps every persona's critique onto:
 
 - **The Four Forces of switching** — *Push* (pain of the current state), *Pull* (appeal of this product), *Anxiety* (fear of adopting), *Habit* (inertia of staying). The right product beats push + pull against anxiety + habit.
-- **Friction points** — where personas want contradictory things (e.g., Marcus wants depth, Tom wants simplicity). Explicit tradeoffs, not averaged-out mush.
+- **Friction points** — where personas want contradictory things (e.g., Marcus wants depth, Diane wants her least technical teammate to be productive on day one). Explicit tradeoffs, not averaged-out mush.
 - **Market gaps** — unmet needs that *no one in the competitive set solves well*. These are the actual white-space opportunities, grounded in evidence from the dossiers rather than vibes.
 - **Switching cost** — a 1–10 score with rationale.
 - **Validation questions** — what to actually ask real customers to confirm the synthesis holds in the wild.
@@ -94,7 +96,7 @@ One `callAPI({ modelId, system, userMessage, thinking, signal })` entry point di
 Three tables (`products`, `research_runs`, `persona_results`) with RLS policies that gate every row on `auth.uid() = user_id`. The `persona_results` policy is parent-scoped — access is granted by joining to the owning run — so compromising one anon JWT can never leak another user's data. The anon key is intentionally publishable because this pattern makes it safe.
 
 **Browser-only architecture, deliberately.**
-Users bring their own Anthropic / Gemini keys, stored in `localStorage` and sent directly to the provider from the browser. No backend proxy, no server-side key storage, no vendor cost exposure. Keys never leave the user's machine. The tradeoff: keys live in `localStorage`, which is acceptable for a BYO-key tool but would be wrong for a hosted service with managed credentials.
+Users bring their own Anthropic / Gemini keys, stored in `localStorage` and sent directly to the provider from the browser. No backend proxy, no server-side key storage, no vendor cost exposure — keys are sent only to the model provider, never proxied through a Persona Lab server. The tradeoff: keys live in `localStorage`, which is acceptable for a BYO-key tool but would be wrong for a hosted service with managed credentials.
 
 **Abort-safe orchestration.**
 `stopResearch()` aborts the shared `AbortController`, clears per-persona loading state, and tears down the three synthesis flags in one shot — so a half-finished batch never leaves the UI stuck.
@@ -110,7 +112,7 @@ Users bring their own Anthropic / Gemini keys, stored in `localStorage` and sent
 | Data | Supabase (Postgres + auth + RLS) | Row-level security replaces a backend for a browser-only app. |
 | PDF | `@react-pdf/renderer` | Client-side export; no server round-trip for the feedback dossier. |
 | Testing | Vitest + Testing Library | Unit tests on the pieces where a regression silently corrupts output: `llm.js`, `prompts/index.js`, `usePersonas.js`, shared components. |
-| Build | `vite-plugin-javascript-obfuscator` | Distributable builds for non-technical users via `start-mac.command` / `start-windows.bat`. |
+| Build | Vite + bundled launchers | Minified builds packaged with `start-mac.command` / `start-windows.bat` so non-technical users can launch the app locally without a Node toolchain. Not a security boundary — the client is designed to be inspectable. |
 
 ---
 
@@ -162,6 +164,7 @@ src/
 │   ├── useAuth.js             # Supabase anonymous auth
 │   ├── useHistory.js          # saveRun → research_runs + persona_results
 │   ├── useProducts.js         # product CRUD
+│   ├── useResearchPipeline.js # fan-out → fan-in orchestrator (reducer-backed)
 │   └── useRunHistory.js       # run list + rehydration
 ├── db/schema.sql              # Postgres + RLS
 ├── lib/supabase.js            # client init
@@ -175,8 +178,9 @@ src/
 
 Honest about what this isn't yet, and where I'd take it:
 
+- **Jira / Linear / Kanban integration.** Every JTBD job, friction point, market gap, and persona dealbreaker already lands as structured JSON. One-click export to a project management board — push jobs as epics, dealbreakers as bugs, market gaps as opportunities — closes the loop between "we found the problem" and "it's on the sprint." Persona context (who raised it, why, their blind spot) goes in the ticket description.
+- **Automatic issue prioritization.** The pipeline already produces priority signals the UI doesn't fully exploit: buy-probability deltas across personas, switching-cost score, how many personas converged on the same dealbreaker, and the demand rating on each market gap. A prioritization pass could rank exported issues by a combined score (persona-convergence × severity × market-gap demand) so the output is a ranked backlog, not an unsorted dump.
 - **Prompt eval harness.** Prompt quality is validated manually right now. The natural next step is a scored eval set against reference critiques — same product, same personas, track drift as prompts change.
-- **Decompose `App.jsx`.** Orchestration state is centralized by design, but the file has grown — extracting a `useResearchRun` hook would cut it in half.
 - **TypeScript.** JS was fast to iterate in; the LLM response shapes and persona schemas are the natural place to start adding types.
 - **Streaming.** Current flow is request-response per persona. Streaming per-token feedback would materially improve perceived latency on the fan-out step.
 
