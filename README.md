@@ -2,6 +2,8 @@
 
 **Adversarial AI personas that stress-test product pitches before customers do.**
 
+**[Try it live →](https://djfisher.github.io/persona-lab/)** · a built-in example dossier works without any API keys.
+
 Describe a product, pick a lineup of skeptical personas — each with their own traits, scoring formulas, and pet peeves — and get back structured, unflattering feedback from every one. A second layer of synthesis agents then runs that critique through a Jobs-to-be-Done framework, a failure pre-mortem, and a product rewrite, producing a strategic dossier instead of a chatbot transcript.
 
 > Built with React 19, Vite, and Supabase, orchestrating parallel calls to Claude + Gemini.
